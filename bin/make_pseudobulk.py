@@ -22,24 +22,24 @@ def init_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--fragments",
-        metavar="file",
+        metavar="<file>",
         type=str,
         help="Specify a path to the fragments.tsv.gz file (fragments.tsv.gz should be in the same directory)",
     )
     parser.add_argument(
         "--celltype_annotation",
-        metavar="file",
+        metavar="<file>",
         type=str,
         help="Specify a path to the cell-type annotation file",
     )
     parser.add_argument(
         "--chromsizes",
-        metavar="file",
+        metavar="<file>",
         type=str,
         help="Specify a path to the file with chromosome lengths from the UCSC databases",
     )
     parser.add_argument(
-        "--cpus", metavar="num", type=int, help="Specify a number of cpu cores to use"
+        "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
     )
     return parser
 

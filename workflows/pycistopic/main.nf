@@ -1,4 +1,5 @@
 include { makePseudobulk } from '../../modules/pycistopic/main'
+include { peakCalling } from '../../modules/pycistopic/main'
 
 workflow  PYCISTOPIC {
     take:
@@ -12,6 +13,7 @@ workflow  PYCISTOPIC {
             celltype_annotation,
             chromsizes
         )
-        pseudobulk.bed.view()
-        pseudobulk.bigwig.view()
+
+        peakCalling = peakCalling(pseudobulk.bed)
+        peakCalling.view()
 }
