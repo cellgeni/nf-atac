@@ -4,7 +4,6 @@ import os
 from tempfile import TemporaryDirectory
 from typing import Dict
 from pycisTopic.pseudobulk_peak_calling import peak_calling
-from pycisTopic.iterative_peak_calling import get_consensus_peaks
 
 
 def init_parser() -> argparse.ArgumentParser:
@@ -19,26 +18,26 @@ def init_parser() -> argparse.ArgumentParser:
         type=str,
         metavar="<file>",
         help="Path to MACS binary (e.g. /xxx/MACS/xxx/bin/macs2)",
-        default="macs2",
+        default="macs2"
     )
     parser.add_argument(
         "--bed_path",
         metavar="<dir>",
         type=str,
-        help="Specify a path to the directory with pseudobulk celltype.fragments.tsv.gz files",
+        help="Specify a path to the directory with pseudobulk celltype.fragments.tsv.gz files"
     )
     parser.add_argument(
         "--output_dir",
         metavar="<dir>",
         type=str,
-        help="Specify a path to the output directory",
+        help="Specify a path to the output directory"
     )
     parser.add_argument(
         "--specie",
         metavar="<val>",
         type=str,
         help="Effective genome size which is defined as the genome size which can be sequenced. Possible values: 'hs', 'mm', 'ce' and 'dm'. Default: 'hs'",
-        default="hs",
+        default="hs"
     )
     parser.add_argument(
         "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
@@ -48,36 +47,42 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<val>",
         type=str,
         help="Format of tag file can be ELAND, BED, ELANDMULTI, ELANDEXPORT, SAM, BAM, BOWTIE, BAMPE, or BEDPE. Default is AUTO which will allow MACS to decide the format automatically. Default: BEDPE",
-        default="BEDPE",
+        default="BEDPE"
     )
     parser.add_argument(
         "--shift",
         metavar="<val>",
         type=int,
         help="To set an arbitrary shift in bp. For finding enriched cutting sites (such as in ATAC-seq) a shift of 73 bp is recommended. Default: 73",
-        default=73,
+        default=73
     )
     parser.add_argument(
         "--extend_read_size",
         metavar="<val>",
         type=int,
         help="To extend reads in 5->3 direction to fix-sized fragment. For ATAC-seq data, a extension of 146 bp is recommended. Default: 146",
-        default=146,
+        default=146
     )
     parser.add_argument(
         "--keep_duplicates",
         metavar="<val>",
         type=str,
         help="Whether to keep duplicate tags at te exact same location. Default: all",
-        default="all",
+        default="all"
     )
     parser.add_argument(
         "--q_value_cutoff",
         metavar="<val>",
         type=float,
-        help="The q-value (minimum FDR) cutoff to call significant regions. Default: 0.05.",
-        default=0.05,
+        help="The q-value (minimum FDR) cutoff to call significant regions. Default: 0.05",
+        default=0.05
     )
+    parser.add_argument(
+        "--skip_empty_peaks",
+        help="If specified skips celltypes with no peaks found",
+        action='store_true'
+    )
+
     return parser
 
 
@@ -122,10 +127,9 @@ def main():
             ext_size=args.extend_read_size,
             keep_dup=args.keep_duplicates,
             q_value=args.q_value_cutoff,
+            skip_empty_peaks=args.skip_empty_peaks,
             _temp_dir=temp_dir,
         )
-
-    # derive concensus peaks
 
 
 if __name__ == "__main__":

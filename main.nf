@@ -8,15 +8,17 @@ workflow {
                         .splitCsv(skip: 1)
                         .map{ sample_id, fragments_path -> [sample_id, file( fragments_path ), file( "${fragments_path}.tbi" )]}
 
-    // Load celltype annotation and chromsizes
+    // Load input files
     celltype_annotation = file( params.celltype_annotation )
     chromsizes = file( params.chromsizes )
+    blacklist = file( params.blacklist )
 
     // Run PyCistopic pipeline
     PYCISTOPIC(
         sample_table,
         celltype_annotation,
-        chromsizes
+        chromsizes,
+        blacklist
     )
 
     // PYCISTOPIC.out.bed.view()
