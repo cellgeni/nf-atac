@@ -1,6 +1,10 @@
+// NEXTFLOW FLAGS
+nextflow.enable.dsl = 2
+
+// IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
 
-
+// WORKFLOW
 workflow {
     // Read sample table and convert string with path to Path object
     sample_table = Channel
@@ -12,13 +16,15 @@ workflow {
     celltype_annotation = file( params.celltype_annotation )
     chromsizes = file( params.chromsizes )
     blacklist = file( params.blacklist )
+    tss_bed = file( params.tss_bed )
 
     // Run PyCistopic pipeline
     PYCISTOPIC(
         sample_table,
         celltype_annotation,
         chromsizes,
-        blacklist
+        blacklist,
+        tss_bed
     )
 
     // PYCISTOPIC.out.bed.view()

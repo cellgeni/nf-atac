@@ -1,9 +1,12 @@
+// function to log error message if there is a memmory shortage
+def lowMemoryError(sample, task_name) {
+    log.warn "The memory is to low to perform ${task_name} for ${sample}"
+    return 'retry'
+}
+
 // process to make pseudobulk profiles from fragments and celltype annototion
-process makePseudobulk {
+process MakePseudobulk {
     tag "Making pseudobulks for $sample_id"
-    time { task.time + 30.minute * task.attempt }
-    memory { task.memory + 50.GB * task.attempt }
-    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'finish' }
     input:
         tuple val(sample_id), path(fragments), path(fragments_index)
         path(celltypes)
@@ -24,24 +27,23 @@ process makePseudobulk {
 }
 
 // Performs pseudobulk peak calling with MACS2
-process peakCalling {
+process PeakCalling {
     tag "Performing pseudobulk peak calling for sample $sample_id"
     input:
         tuple val(sample_id), path("fragments/*")
     output:
-        tuple val(sample_id), path('output/*.narrowPeak')
+        tuple val(sample_id), path('narrowPeaks/*.narrowPeak')
     script:
         """
         peak_calling.py \\
                 --bed_path ./fragments/ \\
-                --output_dir output \\
+                --output_dir narrowPeaks \\
                 --cpus $task.cpus
         """
 }
 
 // Derives consensus peaks from narrow peaks using the TGCA iterative peak filtering approach
-process inferConsensus {
-    debug true
+process InferConsensus {
     tag "Infering consensus peaks for sample $sample_id"
     input:
         tuple val(sample_id), path("narrowPeaks/*")
@@ -56,5 +58,46 @@ process inferConsensus {
                 --narrow_peaks ./narrowPeaks \\
                 --chromsizes $chromsizes \\
                 --blacklist $blacklist
+        """
+}
+
+process QualityControl {
+    debug true
+    tag "Running QC for sample $sample_id"
+    input:
+        tuple val(sample_id), path(framgents), path(fragments_index), path(consensus)
+        path(tss_bed)
+    output:
+        tuple val(sample_id), path(framgents), path(fragments_index), path(consensus), path("qc/")
+    script:
+        """
+        mkdir qc
+        pycistopic qc \\
+            --fragments $framgents \\
+            --regions $consensus \\
+            --tss $tss_bed \\
+            --output qc/$sample_id \\
+            --threads $task.cpus
+        """
+}
+
+
+process CreateCisTopicObject {
+    tag "Creating cisTopic object for sample ${sample_id}"
+    input:
+        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path(qc)
+        path(blacklist)
+    output:
+        tuple val(sample_id),path("*.pkl")
+        script:
+        """
+        create_cistopic.py \\
+            --sample_id $sample_id \\
+            --fragments $fragments \\
+            --consensus $consensus \\
+            --blacklist $blacklist \\
+            --qc_dir $qc \\
+            --cpus $task.cpus \\
+            --use_automatic_thresholds
         """
 }
