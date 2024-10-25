@@ -87,7 +87,7 @@ process QualityControl {
 process CreateCisTopicObject {
     tag "Creating cisTopic object for sample ${sample_id}"
     input:
-        tuple val(sample_id), path(fragments), path(fragments_index), path(barcode_metrics), path(consensus), path(qc)
+        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path(qc)
         path(blacklist)
     output:
         tuple val(sample_id),path("*.pkl")

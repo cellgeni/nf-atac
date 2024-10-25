@@ -107,7 +107,7 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<val>",
         type=str,
         help="Specify a name for sample_id column in annotation file",
-        default="celltype",
+        default="sample_id",
     )
     parser.add_argument(
         "--fragments_col",
@@ -182,6 +182,7 @@ def validate_redundunt_celltypes(
     joined_df = celltypes.merge(barcode_metrics, left_on="barcode", right_on="barcode")
     # calculate a total number of fragments for each celltype
     total_fragments = joined_df.groupby("celltype").sum(numeric_only=True)
+    total_fragments.to_csv(f"{sample_id}_celltypes_fragment_counts.csv")
     # get celltypes with zero fragments
     zero_fragments_celltypes = total_fragments[
         total_fragments[fragments_col] == 0
