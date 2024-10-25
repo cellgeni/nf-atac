@@ -39,6 +39,26 @@ def init_parser() -> argparse.ArgumentParser:
         help="Specify a path to the file with chromosome lengths from the UCSC databases",
     )
     parser.add_argument(
+        "--output_dir",
+        metavar="<dir>",
+        type=str,
+        help="Specify a path to the output directory",
+    )
+    parser.add_argument(
+        "--celltype_col",
+        metavar="<val>",
+        type=str,
+        help="Specify a name for celltype column in annotation file",
+        default="celltype",
+    )
+    parser.add_argument(
+        "--sample_id_col",
+        metavar="<val>",
+        type=str,
+        help="Specify a name for sample_id column in annotation file",
+        default="celltype",
+    )
+    parser.add_argument(
         "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
     )
     return parser
@@ -89,16 +109,16 @@ def main():
     fragments = {args.sample_id: args.fragments}
 
     # make output directory
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     # run pseudobulk generation
     bw_paths, bed_paths = export_pseudobulk(
         input_data=celltypes,
-        variable="celltype",
-        sample_id_col="sample_id",
+        variable=args.celltype_col,
+        sample_id_col=args.sample_id_col,
         chromsizes=chromsizes,
-        bed_path="output",
-        bigwig_path="output",
+        bed_path=args.output_dir,
+        bigwig_path=args.output_dir,
         path_to_fragments=fragments,
         n_cpu=args.cpus,
         normalize_bigwig=True,

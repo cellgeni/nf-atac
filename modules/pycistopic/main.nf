@@ -21,6 +21,7 @@ process MakePseudobulk {
                 --fragments $fragments \\
                 --celltype_annotation $celltypes \\
                 --chromsizes $chromsizes \\
+                --output_dir output \\
                 --cpus $task.cpus
         """
 
