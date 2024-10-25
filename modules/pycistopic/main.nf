@@ -8,7 +8,7 @@ def lowMemoryError(sample, task_name) {
 process MakePseudobulk {
     tag "Making pseudobulks for $sample_id"
     input:
-        tuple val(sample_id), path(fragments), path(fragments_index)
+        tuple val(sample_id), path(fragments), path(fragments_index), path(barcode_metrics)
         path(celltypes)
         path(chromsizes)
     output:
@@ -21,6 +21,7 @@ process MakePseudobulk {
                 --fragments $fragments \\
                 --celltype_annotation $celltypes \\
                 --chromsizes $chromsizes \\
+                --barcode_metrics $barcode_metrics \\
                 --output_dir output \\
                 --cpus $task.cpus
         """
@@ -66,7 +67,7 @@ process QualityControl {
     debug true
     tag "Running QC for sample $sample_id"
     input:
-        tuple val(sample_id), path(framgents), path(fragments_index), path(consensus)
+        tuple val(sample_id), path(framgents), path(fragments_index), path(barcode_metrics), path(consensus)
         path(tss_bed)
     output:
         tuple val(sample_id), path(framgents), path(fragments_index), path(consensus), path("qc/")
@@ -86,7 +87,7 @@ process QualityControl {
 process CreateCisTopicObject {
     tag "Creating cisTopic object for sample ${sample_id}"
     input:
-        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path(qc)
+        tuple val(sample_id), path(fragments), path(fragments_index), path(barcode_metrics), path(consensus), path(qc)
         path(blacklist)
     output:
         tuple val(sample_id),path("*.pkl")

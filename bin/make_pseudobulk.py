@@ -25,6 +25,7 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<file>",
         type=str,
         help="Specify a path to the fragments.tsv.gz file (fragments.tsv.gz should be in the same directory)",
+        default="atac_fragments.tsv.gz",
     )
     parser.add_argument(
         "--celltype_annotation",
@@ -37,6 +38,13 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<file>",
         type=str,
         help="Specify a path to the file with chromosome lengths from the UCSC databases",
+    )
+    parser.add_argument(
+        "--barcode_metrics",
+        metavar="<file>",
+        type=str,
+        help="Specify Cellrangers per_barcode_metrics.csv filename",
+        default="per_barcode_metrics.csv",
     )
     parser.add_argument(
         "--output_dir",
