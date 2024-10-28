@@ -23,6 +23,7 @@ process MakePseudobulk {
                 --chromsizes $chromsizes \\
                 --barcode_metrics $barcode_metrics \\
                 --output_dir output \\
+                --skip_empty_fragments \\
                 --cpus $task.cpus
         """
 
@@ -40,7 +41,8 @@ process PeakCalling {
         peak_calling.py \\
                 --bed_path ./fragments/ \\
                 --output_dir narrowPeaks \\
-                --cpus $task.cpus
+                --cpus $task.cpus \\
+                --skip_empty_peaks
         """
 }
 
@@ -59,12 +61,12 @@ process InferConsensus {
                 --sample_id $sample_id \\
                 --narrow_peaks ./narrowPeaks \\
                 --chromsizes $chromsizes \\
-                --blacklist $blacklist
+                --blacklist $blacklist \\
+                --skip_empty_peaks
         """
 }
 
 process QualityControl {
-    debug true
     tag "Running QC for sample $sample_id"
     input:
         tuple val(sample_id), path(framgents), path(fragments_index), path(barcode_metrics), path(consensus)
