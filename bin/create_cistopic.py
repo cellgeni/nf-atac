@@ -4,6 +4,8 @@ import pickle
 import argparse
 from typing import List
 from polars import read_parquet
+from numpy import ndarray
+from pandas import DataFrame
 from pycisTopic.qc import get_barcodes_passing_qc_for_sample
 from pycisTopic.cistopic_class import create_cistopic_object_from_fragments
 
@@ -79,7 +81,7 @@ def init_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def read_metrics(qc_dir: str, sample_id: str, barcodes: List[str]):
+def read_metrics(qc_dir: str, sample_id: str, barcodes: ndarray) -> DataFrame:
     """
     Read QC metrics from <sample_id>.fragments_stats_per_cb.parquet file
     qc_dir (str): directory with QC results
@@ -92,9 +94,13 @@ def read_metrics(qc_dir: str, sample_id: str, barcodes: List[str]):
     )
     if not os.path.exists(fragments_stats_file):
         raise ValueError('No file with path "{fragments_stats_file}" was found')
-
+    # if there is only 1 passing barcode it is returned as 0d array
+    # as result of numpy squeeze function see
+    # https://github.com/aertslab/pycisTopic/blob/787ce422a37f5975b0ebb9e7b19eeaed44847501/src/pycisTopic/qc.py#L140C40-L140C50
+    barcodes = barcodes if barcodes.shape else [barcodes[()]]
     # read data and filter barcodes
-    fragments_stats = read_parquet(fragments_stats_file).to_pandas().set_index("CB")
+    fragments_stats = read_parquet(fragments_stats_file).to_pandas()
+    fragments_stats = fragments_stats.set_index("CB")
     fragments_stats = fragments_stats.loc[barcodes].copy()
     return fragments_stats
 
