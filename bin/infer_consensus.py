@@ -4,9 +4,16 @@ import os
 import glob
 from typing import Dict
 from make_pseudobulk import read_chromsizes
+import logging
+from colored_logger import setup_logging
 from pycisTopic.iterative_peak_calling import get_consensus_peaks
 from pyranges import PyRanges
 from pandas import read_csv
+from pandas.errors import DtypeWarning
+import warnings
+
+# ignore pandas DtypeWarning warnings
+warnings.simplefilter(action="ignore", category=DtypeWarning)
 
 
 NARROW_PEAK_COLUMNS = [
@@ -76,9 +83,9 @@ def path_to_celltype(filepath: str) -> str:
     return celltype
 
 
-def read_narrow_peak(filepath: str, sample_id: str, skip_empty_peaks: bool) -> PyRanges:
+def check_if_empty(filepath: str, sample_id: str, skip_empty_peaks: bool) -> bool:
     """
-    Reads .narrowPeak file to PyRanges objects
+    Checks if .narrowPeak file is empty
     filepath (str): A path to the .narrowPeak file
     sample_id (str): Sample identifier
     skip_empty_peaks (bool): If True skips celltypes with no peaks found
@@ -87,13 +94,24 @@ def read_narrow_peak(filepath: str, sample_id: str, skip_empty_peaks: bool) -> P
     file_size = os.stat(filepath).st_size
 
     if file_size == 0 and skip_empty_peaks:
-        print(f"{sample_id} has no peaks for {path_to_celltype(filepath)}")
-        return PyRanges()
+        logging.warning(
+            f"{sample_id} has no peaks for {path_to_celltype(filepath)}. Skipping"
+        )
+        return True
     elif file_size == 0 and not skip_empty_peaks:
         raise ValueError(
             f"{sample_id} has no peaks for {path_to_celltype(filepath)}, exiting. Set skip_empty_peaks to True to skip empty peaks."
         )
+    return False
 
+
+def read_narrow_peak(filepath: str) -> PyRanges:
+    """
+    Reads .narrowPeak file to PyRanges objects
+    filepath (str): A path to the .narrowPeak file
+    sample_id (str): Sample identifier
+    skip_empty_peaks (bool): If True skips celltypes with no peaks found
+    """
     # read narrow peaks to DataFrame
     narrow_peak = read_csv(filepath, sep="\t", header=None)
     narrow_peak.columns = NARROW_PEAK_COLUMNS
@@ -104,6 +122,9 @@ def read_narrow_peak(filepath: str, sample_id: str, skip_empty_peaks: bool) -> P
 
 
 def main():
+    # set up logger
+    setup_logging()
+
     # parse script arguments
     parser = init_parser()
     args = parser.parse_args()
@@ -114,10 +135,9 @@ def main():
     # read .narrowpeaks files to pr.PyRanges objects
     narrow_peak_files = glob.glob(os.path.join(args.narrow_peaks, "*.narrowPeak"))
     narrow_peak_dict = {
-        path_to_celltype(filepath): read_narrow_peak(
-            filepath, args.sample_id, args.skip_empty_peaks
-        )
+        path_to_celltype(filepath): read_narrow_peak(filepath)
         for filepath in narrow_peak_files
+        if not check_if_empty(filepath, args.sample_id, args.skip_empty_peaks)
     }
 
     # infer consensus peaks
