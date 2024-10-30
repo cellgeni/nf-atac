@@ -16,3 +16,17 @@ This pipeline performs peak calling for ATAC data (only cisTopic option is avail
 * `nextflow.config` - the configuration script that controls everything
 
 ## Pipeline Arguments
+* --sample_table      specify a .csv file with sample names and path to the CellRanger-arc output dir (see example below)
+* --celltypes         specify a .csv file with celltype annotation (must include 'sample_id', 'barcode' and 'celltype' colums)
+* --cisTopicObject    if specified the script creates cisTopicObject for each sample (otherwise only `.bed` files with consensus peaks are available)
+
+## Examples of use:
+1. Perform peak calling
+```shell
+nextflow run main.nf --sample_table ./examples/samples.csv --celltypes examples/celltypes.csv
+```
+
+2. Perform peak calling and additionally create a cisTopic object
+```shell
+nextflow run main.nf --sample_table ./examples/samples.csv --celltypes examples/celltypes.csv --cisTopicObject
+```
