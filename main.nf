@@ -58,7 +58,7 @@ workflow {
                             }
 
     // Load celltype annotation file
-    celltype_annotation = file( params.celltype_annotation )
+    celltype_annotation = file( params.celltypes )
 
     // Load other files required for cisTopic pipeline
     chromsizes = file( params.chromsizes )
