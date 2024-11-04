@@ -45,17 +45,7 @@ workflow {
     }
     
     // Read sample table and convert path to dir to path to fragments and barcode matrics
-    sample_table = Channel
-                        .fromPath(params.sample_table, checkIfExists: true)
-                        .splitCsv(skip: 1)
-                        .map{ sample_id, cellranger_arc_output -> 
-                                [
-                                    sample_id,
-                                    file( "${cellranger_arc_output}/${params.fragments_filename}" ),
-                                    file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
-                                    file( "${cellranger_arc_output}/${params.barcode_metrics_filename}" ),
-                                ]
-                            }
+    sample_table = params.sample_table
 
     // Load celltype annotation file
     celltype_annotation = file( params.celltypes )

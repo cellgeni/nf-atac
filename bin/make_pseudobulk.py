@@ -5,7 +5,7 @@ import sys
 import logging
 from typing import List
 from colored_logger import setup_logging
-from pandas import read_csv, read_table, DataFrame
+from pandas import read_csv, read_table, DataFrame, concat
 from pandas.errors import InvalidColumnName, DataError
 from pycisTopic.pseudobulk_peak_calling import export_pseudobulk
 
@@ -22,14 +22,15 @@ def init_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--sample_id",
         type=str,
-        help="Sample name in celltype annotation file",
+        nargs="+",
+        help="Specify sample ids in celltype annotation file you want to process",
     )
     parser.add_argument(
         "--fragments",
         metavar="<file>",
         type=str,
-        help="Specify a path to the fragments.tsv.gz file (fragments.tsv.gz should be in the same directory)",
-        default="atac_fragments.tsv.gz",
+        nargs="+",
+        help="Specify a paths to the fragments.tsv.gz files in the same order as sample ids (fragments.tsv.gz should be in the same directory)",
     )
     parser.add_argument(
         "--celltype_annotation",
@@ -46,9 +47,8 @@ def init_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--barcode_metrics",
         metavar="<file>",
-        type=str,
-        help="Specify Cellrangers per_barcode_metrics.csv filename",
-        default="per_barcode_metrics.csv",
+        nargs="+",
+        help="Specify Cellranger's per_barcode_metrics.csv files in the same order as sample ids",
     )
     parser.add_argument(
         "--output_dir",
@@ -138,11 +138,11 @@ def read_celltype_annotation(sample_id: str, celltype_file: str) -> DataFrame:
     # check if DataFrame contains all necessary rows
     validate_celltype_columns(celltypes.columns, CELLTYPE_COLUMNS)
     # subsample sample_id rows only
-    celltypes = celltypes[celltypes.sample_id == sample_id].copy()
+    celltypes = celltypes[celltypes.sample_id.isin(sample_id)].copy()
     return celltypes
 
 
-def filter_nan_entries(sample_id: str, celltypes: DataFrame, dropna: bool) -> None:
+def filter_nan_entries(celltypes: DataFrame, dropna: bool) -> None:
     """
     Checks if there are any NaN values in celltypes dataframe for sample_id
     sample_id (str): sample identifier
@@ -151,17 +151,11 @@ def filter_nan_entries(sample_id: str, celltypes: DataFrame, dropna: bool) -> No
     nan_etries = celltypes.isna().values.any()
     if nan_etries:
         if dropna:
-            logging.warning(
-                f"Cell-type annotation file contains NaN values for sample_id={sample_id}"
-            )
-            logging.info(
-                f"Removing NaN values from celltype annotation for {sample_id}"
-            )
+            logging.warning(f"Cell-type annotation file contains NaN values")
+            logging.info(f"Removing NaN values from celltype annotation")
             celltypes.dropna(inplace=True)
         else:
-            raise DataError(
-                f"Cell-type annotation file contains NaN values for sample_id={sample_id}"
-            )
+            raise DataError(f"Cell-type annotation file contains NaN values")
 
 
 def find_zero_fragment_celltypes(
@@ -182,8 +176,11 @@ def find_zero_fragment_celltypes(
     # join two DataFrames
     joined_df = celltypes.merge(barcode_metrics, left_on="barcode", right_on="barcode")
     # calculate a total number of fragments for each celltype
+    os.makedirs("fragmentcounts", exist_ok=True)
     total_fragments = joined_df.groupby(celltype_col).sum(numeric_only=True)
-    total_fragments.to_csv(f"{sample_id}_celltypes_fragment_counts.csv")
+    total_fragments.to_csv(
+        os.path.join("fragmentcounts", f"{sample_id}_celltypes_fragment_counts.csv")
+    )
     # get celltypes with zero fragments
     zero_fragments_celltypes = total_fragments[
         total_fragments[fragments_col] == 0
@@ -196,7 +193,7 @@ def drop_empty_fragment(
     celltypes: DataFrame,
     zero_fragments_celltypes: List[str],
     celltype_col: str,
-):
+) -> DataFrame:
     """
     Drops celltypes with zero fragments from celltype DataFrame
     sample_id (str): sample identifier
@@ -213,10 +210,11 @@ def drop_empty_fragment(
     zero_fragment_cells = celltypes[
         celltypes[celltype_col].isin(zero_fragments_celltypes)
     ].index
-    celltypes.drop(zero_fragment_cells, inplace=True)
+    celltypes_filtered = celltypes.drop(zero_fragment_cells)
+    return celltypes_filtered
 
 
-def filter_empty_fragments(
+def filter_empty_fragments_for_sample(
     sample_id: str,
     celltypes: DataFrame,
     barcode_metrics: DataFrame,
@@ -242,13 +240,50 @@ def filter_empty_fragments(
             logging.warning(
                 f"Sample {sample_id} containts zero fragments for the following celltypes: {celltypes_string}"
             )
-            drop_empty_fragment(
+            celltypes = drop_empty_fragment(
                 sample_id, celltypes, zero_fragments_celltypes, celltype_col
             )
         else:
             raise ValueError(
                 f"Sample {sample_id} containts zero fragments for the following celltypes: {celltypes_string}"
             )
+    return celltypes
+
+
+def filter_empty_fragments(
+    celltypes: DataFrame,
+    barcode_metrics_list: List[str],
+    celltype_col: str,
+    fragments_col: str,
+    skip_empty_fragments: bool,
+) -> DataFrame:
+    """
+    Filter celltypes with zero fragments for all samples in celltypes
+    celltypes (DataFrame): a dataframe with barcode/celltype annotation
+    barcode_metrics (List[str]): a List of barcode metrics file paths
+    celltype_col (str): a name of the column with celltype labels in celltypes DataFrame
+    fragments_col str: a name of the column with counts of fragments per barcode
+    skip_empty_fragments: if true removes all celltypes with zero fragments from DataFrame
+    """
+    celltype_filtered = list()
+    for sample_id, barcode_metrics_path in barcode_metrics_list.items():
+        # read barcode metrics file
+        barcode_metrics = read_barcode_metrics(barcode_metrics_path, fragments_col)
+        # subsample the celltype annotation file
+        celltype_sample = celltypes[celltypes.sample_id == sample_id].copy()
+        # filter annotation from celltypes with no fragments
+        celltype_filtered_sample = filter_empty_fragments_for_sample(
+            sample_id=sample_id,
+            celltypes=celltype_sample,
+            barcode_metrics=barcode_metrics,
+            celltype_col=celltype_col,
+            fragments_col=fragments_col,
+            skip_empty_fragments=skip_empty_fragments,
+        )
+        celltype_filtered.append(celltype_filtered_sample)
+    # concat filtered dataframes
+    celltypes = concat(celltype_filtered, axis=0)
+    return celltypes
 
 
 def main():
@@ -259,24 +294,23 @@ def main():
     parser = init_parser()
     args = parser.parse_args()
 
+    # make a dictionaries for fragments and barcode metrics files
+    fragments_dict = dict(zip(args.sample_id, args.fragments))
+    barcode_metrics_dict = dict(zip(args.sample_id, args.barcode_metrics))
+
     # read files to DataFrame
     chromsizes = read_chromsizes(args.chromsizes)
     celltypes = read_celltype_annotation(args.sample_id, args.celltype_annotation)
-    barcode_metrics = read_barcode_metrics(args.barcode_metrics, args.fragments_col)
 
     # filter celltypes DataFrame
-    filter_nan_entries(args.sample_id, celltypes, args.dropna)
-    filter_empty_fragments(
-        args.sample_id,
+    filter_nan_entries(celltypes, args.dropna)
+    celltypes = filter_empty_fragments(
         celltypes,
-        barcode_metrics,
+        barcode_metrics_dict,
         args.celltype_col,
         args.fragments_col,
         args.skip_empty_fragments,
     )
-
-    # get fragments file path dict
-    fragments = {args.sample_id: args.fragments}
 
     # make output directory
     os.makedirs(args.output_dir, exist_ok=True)
@@ -289,7 +323,7 @@ def main():
         chromsizes=chromsizes,
         bed_path=args.output_dir,
         bigwig_path=args.output_dir,
-        path_to_fragments=fragments,
+        path_to_fragments=fragments_dict,
         n_cpu=args.cpus,
         normalize_bigwig=True,
     )
