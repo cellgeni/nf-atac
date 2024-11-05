@@ -18,26 +18,26 @@ def init_parser() -> argparse.ArgumentParser:
         type=str,
         metavar="<file>",
         help="Path to MACS binary (e.g. /xxx/MACS/xxx/bin/macs2)",
-        default="macs2"
+        default="macs2",
     )
     parser.add_argument(
         "--bed_path",
-        metavar="<dir>",
+        metavar="<file>",
         type=str,
-        help="Specify a path to the directory with pseudobulk celltype.fragments.tsv.gz files"
+        help="Specify a path to the fragments file in format celltype.fragments.tsv.gz",
     )
     parser.add_argument(
         "--output_dir",
         metavar="<dir>",
         type=str,
-        help="Specify a path to the output directory"
+        help="Specify a path to the output directory",
     )
     parser.add_argument(
         "--specie",
         metavar="<val>",
         type=str,
         help="Effective genome size which is defined as the genome size which can be sequenced. Possible values: 'hs', 'mm', 'ce' and 'dm'. Default: 'hs'",
-        default="hs"
+        default="hs",
     )
     parser.add_argument(
         "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
@@ -47,40 +47,40 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<val>",
         type=str,
         help="Format of tag file can be ELAND, BED, ELANDMULTI, ELANDEXPORT, SAM, BAM, BOWTIE, BAMPE, or BEDPE. Default is AUTO which will allow MACS to decide the format automatically. Default: BEDPE",
-        default="BEDPE"
+        default="BEDPE",
     )
     parser.add_argument(
         "--shift",
         metavar="<val>",
         type=int,
         help="To set an arbitrary shift in bp. For finding enriched cutting sites (such as in ATAC-seq) a shift of 73 bp is recommended. Default: 73",
-        default=73
+        default=73,
     )
     parser.add_argument(
         "--extend_read_size",
         metavar="<val>",
         type=int,
         help="To extend reads in 5->3 direction to fix-sized fragment. For ATAC-seq data, a extension of 146 bp is recommended. Default: 146",
-        default=146
+        default=146,
     )
     parser.add_argument(
         "--keep_duplicates",
         metavar="<val>",
         type=str,
         help="Whether to keep duplicate tags at te exact same location. Default: all",
-        default="all"
+        default="all",
     )
     parser.add_argument(
         "--q_value_cutoff",
         metavar="<val>",
         type=float,
         help="The q-value (minimum FDR) cutoff to call significant regions. Default: 0.05",
-        default=0.05
+        default=0.05,
     )
     parser.add_argument(
         "--skip_empty_peaks",
         help="If specified skips celltypes with no peaks found",
-        action='store_true'
+        action="store_true",
     )
 
     return parser
@@ -88,17 +88,13 @@ def init_parser() -> argparse.ArgumentParser:
 
 def make_bedpath_dict(bed_path: str) -> Dict[str, str]:
     """
-    The function assumes that bed files are saved in the form celltype.fragments.tsv.gz in the folder.
-    It creates the Dict[celltype, path].
-    bed_path (str): path to the directory where all bed files are stored
+    Creates the Dict[celltype, path].
+    bed_path (str): path to the fragments file
     """
-    bedpath_dict = dict()
-    file_list = os.listdir(bed_path)
-    for filename in file_list:
-        # remove suffix in filename
-        celltype = filename.replace(".fragments.tsv.gz", "")
-        # write to the dict
-        bedpath_dict[celltype] = os.path.join(bed_path, filename)
+    # remove suffix in filename
+    celltype = bed_path.replace(".fragments.tsv.gz", "")
+    # write to the dict
+    bedpath_dict = {celltype: bed_path}
     return bedpath_dict
 
 

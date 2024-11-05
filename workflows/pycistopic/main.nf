@@ -25,7 +25,7 @@ workflow  PYCISTOPIC {
         // 3) convert everything to List with elements [sample_id, fragments_path, fragments_idx_path, barcode_metrics_path]
         // 4) Transpose List -> Channel(sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list)
         // 5) Convert Channel ->  List[sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list]
-        fragmets = SplitCellTypeAnnotation.out
+        fragments = SplitCellTypeAnnotation.out
                                           .sample_table
                                           .splitCsv(skip: 1)
                                           .map{ sample_id, cellranger_arc_output -> 
@@ -40,7 +40,7 @@ workflow  PYCISTOPIC {
                                           .transpose()
                                           .toList()
 
-        Make pseudobulk for each sample
+        //Make pseudobulk for each sample
         pseudobulk = MakePseudobulk(
             fragments,
             celltypes,
@@ -50,14 +50,15 @@ workflow  PYCISTOPIC {
         pseudobulk.fragments.view()
 
         // Perform peak calling for pseudobulks
-        // narrow_peaks = PeakCalling(pseudobulk.fragments)
+        narrow_peaks = PeakCalling(pseudobulk.fragments)
+        narrow_peaks = narrow_peaks.collect()
 
         // // Get consensus peaks
-        // consensus = InferConsensus(
-        //     narrow_peaks,
-        //     chromsizes,
-        //     blacklist
-        // )
+        consensus = InferConsensus(
+            narrow_peaks,
+            chromsizes,
+            blacklist
+        )
 
         // // Perform QC
         // fragments_consensus = sample_table.join(consensus, failOnDuplicate: true)

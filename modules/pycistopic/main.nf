@@ -4,6 +4,19 @@ def lowMemoryError(sample, task_name) {
     return 'retry'
 }
 
+def MakePseudobulkErrorHandler(exitStatus, celltypes) {
+    if ( exitStatus == 130 ) {
+        log.warn "The memory is to low to perform MakePseudobulk"
+        return 'retry'
+    } else if ( exitStatus == 0 ) {
+        def celltype_name = celltypes.getName().split('\\.')[0]
+        log.warn "No fragments found for ${celltype_name}"
+        return 'ignore'
+    } else {
+        return 'terminate'
+    }
+}
+
 process SplitCellTypeAnnotation {
     tag "Splitting celltype annotation"
     input:
@@ -33,8 +46,8 @@ process MakePseudobulk {
         each path(celltypes)
         path(chromsizes)
     output:
-        tuple val(sample_id_list), path('output/*.tsv.gz'), emit: fragments
-        path('output/*.bw'), emit: bigwig
+        path('output/*.tsv.gz'), emit: fragments
+        path('bigwig/*.bw'), emit: bigwig
     script:
         def sample_id = sample_id_list.join(' ')
         """
@@ -45,6 +58,7 @@ process MakePseudobulk {
                 --chromsizes $chromsizes \\
                 --barcode_metrics $barcode_metrics \\
                 --output_dir output \\
+                --bigwig_dir bigwig \\
                 --skip_empty_fragments \\
                 --cpus $task.cpus
         """
@@ -53,15 +67,15 @@ process MakePseudobulk {
 
 // Performs pseudobulk peak calling with MACS2
 process PeakCalling {
-    tag "Performing pseudobulk peak calling for sample $sample_id"
+    tag "Performing pseudobulk peak calling for sample ${fragments.getName()}"
     input:
-        tuple val(sample_id), path("fragments/*")
+        path(fragments)
     output:
-        tuple val(sample_id), path('narrowPeaks/*.narrowPeak')
+        path('narrowPeaks/*.narrowPeak')
     script:
         """
         peak_calling.py \\
-                --bed_path ./fragments/ \\
+                --bed_path $fragments \\
                 --output_dir narrowPeaks \\
                 --cpus $task.cpus \\
                 --skip_empty_peaks
@@ -70,17 +84,16 @@ process PeakCalling {
 
 // Derives consensus peaks from narrow peaks using the TGCA iterative peak filtering approach
 process InferConsensus {
-    tag "Infering consensus peaks for sample $sample_id"
+    tag "Infering consensus peaks"
     input:
-        tuple val(sample_id), path("narrowPeaks/*")
+        path("narrowPeaks/*")
         path(chromsizes)
         path(blacklist)
     output:
-        tuple val(sample_id), path('*.bed')
+        path('*.bed')
     script:
         """
         infer_consensus.py \\
-                --sample_id $sample_id \\
                 --narrow_peaks ./narrowPeaks \\
                 --chromsizes $chromsizes \\
                 --blacklist $blacklist \\
