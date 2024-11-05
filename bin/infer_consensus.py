@@ -9,11 +9,6 @@ from colored_logger import setup_logging
 from pycisTopic.iterative_peak_calling import get_consensus_peaks
 from pyranges import PyRanges
 from pandas import read_csv
-from pandas.errors import DtypeWarning
-import warnings
-
-# ignore pandas DtypeWarning warnings
-warnings.simplefilter(action="ignore", category=DtypeWarning)
 
 
 NARROW_PEAK_COLUMNS = [
