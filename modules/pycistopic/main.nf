@@ -113,7 +113,7 @@ process QualityControl {
     script:
         """
         mkdir qc
-        pycistopic run qc \\
+        pycistopic qc run \\
             --fragments $fragments \\
             --regions $consensus \\
             --tss $tss_bed \\
