@@ -19,12 +19,7 @@ workflow  PYCISTOPIC {
         // Get splited celltype files
         celltypes = SplitCellTypeAnnotation.out.celltypes
 
-        // Get fragments and barcode metrics from filtered sample table. Steps' description:
-        // 1) split sample_table in rows (skipping header)
-        // 2) convert cellranger-arc output dir to fragments paths
-        // 3) convert everything to List with elements [sample_id, fragments_path, fragments_idx_path, barcode_metrics_path]
-        // 4) Transpose List -> Channel(sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list)
-        // 5) Convert Channel ->  List[sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list]
+        // Get fragments and barcode metrics paths from filtered sample table
         fragments = SplitCellTypeAnnotation.out
                                           .sample_table
                                           .splitCsv(skip: 1)
@@ -36,20 +31,22 @@ workflow  PYCISTOPIC {
                                                 file( "${cellranger_arc_output}/${params.barcode_metrics_filename}" ),
                                             ]
                                           }
-                                          .collect(flat: false)
-                                          .transpose()
-                                          .toList()
+        // Conver channgel to list:
+        // 1) Collect everything to List with elements [sample_id, fragments_path, fragments_idx_path, barcode_metrics_path]
+        // 2) Transpose List -> Channel(sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list)
+        // 3) Convert Channel ->  List[sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list]
+        fragments_list = fragments.collect(flat: false)
+                                  .transpose()
+                                  .toList()
 
         //Make pseudobulk for each sample
         pseudobulk = MakePseudobulk(
-            fragments,
+            fragments_list,
             celltypes,
             chromsizes
         )
 
-        pseudobulk.fragments.view()
-
-        // Perform peak calling for pseudobulks
+        // Perform peak calling for pseudobulks and collect all files
         narrow_peaks = PeakCalling(pseudobulk.fragments)
         narrow_peaks = narrow_peaks.collect()
 
@@ -58,11 +55,10 @@ workflow  PYCISTOPIC {
             narrow_peaks,
             chromsizes,
             blacklist
-        )
+        ).collect()
 
         // // Perform QC
-        // fragments_consensus = sample_table.join(consensus, failOnDuplicate: true)
-        // fragments_consensus_qc = QualityControl(fragments_consensus, tss_bed)
+        fragments_consensus_qc = QualityControl(fragments, consensus, tss_bed)
 
         // // Create cisTopic object
         // CreateCisTopicObject(fragments_consensus_qc, blacklist)
