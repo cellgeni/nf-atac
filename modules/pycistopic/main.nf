@@ -25,7 +25,7 @@ process SplitCellTypeAnnotation {
     output:
         path('output/*.csv'), emit: celltypes
         path('filtered_sample_table.csv'), emit: sample_table
-        path('pseudobulk.log'), emit: log
+        path('splitcelltypes.log'), emit: log
     script:
         """
         split_annotation.py \\
@@ -50,9 +50,10 @@ process MakePseudobulk {
     output:
         path('output/*.tsv.gz'), emit: fragments
         path('bigwig/*.bw'), emit: bigwig
-        path('pseudobulk.log'), emit: log
+        path('*.log'), emit: log
     script:
         def sample_id = sample_id_list.join(' ')
+        def celltype_name = celltypes.getName().split('\\.')[0]
         """
         make_pseudobulk.py \\
                 --sample_id $sample_id \\
@@ -64,7 +65,7 @@ process MakePseudobulk {
                 --bigwig_dir bigwig \\
                 --skip_empty_fragments \\
                 --cpus $task.cpus \\
-                --logfile pseudobulk.log
+                --logfile "pseudobulk.${celltype_name}.log"
         """
 
 }
