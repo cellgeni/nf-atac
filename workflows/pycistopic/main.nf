@@ -12,6 +12,7 @@ workflow  PYCISTOPIC {
         chromsizes
         blacklist
         tss_bed
+        cisTopicObjectFlag
     main:
         // Split celltypes and filter sample table from duplicates
         SplitCellTypeAnnotation(sample_table, celltype_annotation)
@@ -39,7 +40,7 @@ workflow  PYCISTOPIC {
                                   .transpose()
                                   .toList()
 
-        //Make pseudobulk for each sample
+        // Make pseudobulk for each sample
         pseudobulk = MakePseudobulk(
             fragments_list,
             celltypes,
@@ -50,16 +51,14 @@ workflow  PYCISTOPIC {
         narrow_peaks = PeakCalling(pseudobulk.fragments)
         narrow_peaks = narrow_peaks.collect()
 
-        // // Get consensus peaks
-        consensus = InferConsensus(
-            narrow_peaks,
-            chromsizes,
-            blacklist
-        ).collect()
+        // Get consensus peaks
+        consensus = InferConsensus(narrow_peaks, chromsizes, blacklist).bed.collect()
 
-        // // Perform QC
+        // Perform QC
         fragments_consensus_qc = QualityControl(fragments, consensus, tss_bed)
 
-        // // Create cisTopic object
-        // CreateCisTopicObject(fragments_consensus_qc, blacklist)
+        // Create cisTopic object
+        if (cisTopicObjectFlag) {
+            CreateCisTopicObject(fragments_consensus_qc, blacklist)
+        }
 }

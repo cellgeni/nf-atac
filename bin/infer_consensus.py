@@ -68,6 +68,13 @@ def init_parser() -> argparse.ArgumentParser:
         help="If specified skips celltypes with no peaks found",
         action="store_true",
     )
+    parser.add_argument(
+        "--logfile",
+        metavar="<file>",
+        type=str,
+        help="Specify a log file name",
+        default="inferconsensus.log",
+    )
     return parser
 
 
@@ -115,12 +122,12 @@ def read_narrow_peak(filepath: str) -> PyRanges:
 
 
 def main():
-    # set up logger
-    setup_logging()
-
     # parse script arguments
     parser = init_parser()
     args = parser.parse_args()
+
+    # set up logger
+    setup_logging(args.logfile)
 
     # read chromsizes file to DataFrame
     chromsizes = read_chromsizes(args.chromsizes)

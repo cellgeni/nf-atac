@@ -79,6 +79,13 @@ def init_parser() -> argparse.ArgumentParser:
         help="If specified drops duplicated samples from sample table",
         action="store_true",
     )
+    parser.add_argument(
+        "--logfile",
+        metavar="<file>",
+        type=str,
+        help="Specify a log file name",
+        default="splitcelltypes.log",
+    )
     return parser
 
 
@@ -254,12 +261,12 @@ def split_celltypes(celltypes_df: DataFrame, celltype_col: str, output_dir: str)
 
 
 def main():
-    # set up logger
-    setup_logging()
-
     # parse script arguments
     parser = init_parser()
     args = parser.parse_args()
+
+    # set up logger
+    setup_logging(args.logfile)
 
     # read sample table and get sample list
     sample_table = read_sample_table(

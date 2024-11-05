@@ -25,6 +25,7 @@ process SplitCellTypeAnnotation {
     output:
         path('output/*.csv'), emit: celltypes
         path('filtered_sample_table.csv'), emit: sample_table
+        path('pseudobulk.log'), emit: log
     script:
         """
         split_annotation.py \\
@@ -32,6 +33,7 @@ process SplitCellTypeAnnotation {
             --celltype_annotation $celltypes \\
             --output_dir output \\
             --filtered_sample_table filtered_sample_table.csv \\
+            --logfile splitcelltypes.log \\
             --dropna
         """
     
@@ -48,6 +50,7 @@ process MakePseudobulk {
     output:
         path('output/*.tsv.gz'), emit: fragments
         path('bigwig/*.bw'), emit: bigwig
+        path('pseudobulk.log'), emit: log
     script:
         def sample_id = sample_id_list.join(' ')
         """
@@ -60,7 +63,8 @@ process MakePseudobulk {
                 --output_dir output \\
                 --bigwig_dir bigwig \\
                 --skip_empty_fragments \\
-                --cpus $task.cpus
+                --cpus $task.cpus \\
+                --logfile pseudobulk.log
         """
 
 }
@@ -90,7 +94,8 @@ process InferConsensus {
         path(chromsizes)
         path(blacklist)
     output:
-        path('*.bed')
+        path('*.bed'), emit: bed
+        path('inferconsensus.log'), emit: log
     script:
         """
         infer_consensus.py \\
@@ -98,7 +103,8 @@ process InferConsensus {
                 --chromsizes $chromsizes \\
                 --blacklist $blacklist \\
                 --consensus consensus_peaks.bed \\
-                --skip_empty_peaks
+                --skip_empty_peaks \\
+                --logfile inferconsensus.log
         """
 }
 

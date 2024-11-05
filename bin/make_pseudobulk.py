@@ -99,6 +99,13 @@ def init_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
     )
+    parser.add_argument(
+        "--logfile",
+        metavar="<file>",
+        type=str,
+        help="Specify a log file name",
+        default="pseudobulk.log",
+    )
     return parser
 
 
@@ -372,12 +379,12 @@ def read_celltype_annotation(
 
 
 def main():
-    # set up logger
-    setup_logging()
-
     # parse script arguments
     parser = init_parser()
     args = parser.parse_args()
+
+    # set up logger
+    setup_logging(args.logfile)
 
     # make a dictionaries for fragments and barcode metrics files
     fragments_dict = dict(zip(args.sample_id, args.fragments))

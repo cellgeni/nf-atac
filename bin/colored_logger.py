@@ -21,7 +21,7 @@ class ColoredFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-def setup_logging() -> None:
+def setup_logging(logfile=".python.log") -> None:
     """
     Setup logging configuration of the script
     """
@@ -29,7 +29,7 @@ def setup_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s: %(message)s",
-        filename=".python.log",
+        filename=logfile,
         filemode="w",
     )
 
