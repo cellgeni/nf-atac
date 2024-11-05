@@ -61,7 +61,8 @@ workflow {
         celltype_annotation,
         chromsizes,
         blacklist,
-        tss_bed
+        tss_bed,
+        params.cisTopicObject
     )
 
     // PYCISTOPIC.out.bed.view()
