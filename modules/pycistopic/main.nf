@@ -97,6 +97,7 @@ process InferConsensus {
                 --narrow_peaks ./narrowPeaks \\
                 --chromsizes $chromsizes \\
                 --blacklist $blacklist \\
+                --consensus consensus_peaks.bed \\
                 --skip_empty_peaks
         """
 }
@@ -104,15 +105,16 @@ process InferConsensus {
 process QualityControl {
     tag "Running QC for sample $sample_id"
     input:
-        tuple val(sample_id), path(framgents), path(fragments_index), path(barcode_metrics), path(consensus)
+        tuple val(sample_id), path(fragments), path(fragments_index), path(barcode_metrics)
+        path(consensus)
         path(tss_bed)
     output:
-        tuple val(sample_id), path(framgents), path(fragments_index), path(consensus), path("qc/")
+        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path("qc/")
     script:
         """
         mkdir qc
         pycistopic run qc \\
-            --fragments $framgents \\
+            --fragments $fragments \\
             --regions $consensus \\
             --tss $tss_bed \\
             --output qc/$sample_id \\

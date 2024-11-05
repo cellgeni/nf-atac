@@ -38,9 +38,6 @@ def init_parser() -> argparse.ArgumentParser:
         description="Derives consensus peaks from narrow peaks using the TGCA iterative peak filtering approach"
     )
     parser.add_argument(
-        "--sample_id", type=str, metavar="<val>", help="Sample identificator"
-    )
-    parser.add_argument(
         "--narrow_peaks",
         type=str,
         metavar="<dir>",
@@ -57,6 +54,12 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<file>",
         type=str,
         help="Specify a path to bed file containing blacklist regions (Amemiya et al., 2019)",
+    )
+    parser.add_argument(
+        "--consensus",
+        metavar="<file>",
+        type=str,
+        help="Specify an output file name",
     )
     parser.add_argument(
         "--peak_half_width",
@@ -83,24 +86,21 @@ def path_to_celltype(filepath: str) -> str:
     return celltype
 
 
-def check_if_empty(filepath: str, sample_id: str, skip_empty_peaks: bool) -> bool:
+def check_if_empty(filepath: str, skip_empty_peaks: bool) -> bool:
     """
     Checks if .narrowPeak file is empty
     filepath (str): A path to the .narrowPeak file
-    sample_id (str): Sample identifier
     skip_empty_peaks (bool): If True skips celltypes with no peaks found
     """
     # check if file is empty
     file_size = os.stat(filepath).st_size
 
     if file_size == 0 and skip_empty_peaks:
-        logging.warning(
-            f"{sample_id} has no peaks for {path_to_celltype(filepath)}. Skipping"
-        )
+        logging.warning(f"No peaks found for {path_to_celltype(filepath)}. Skipping")
         return True
     elif file_size == 0 and not skip_empty_peaks:
         raise ValueError(
-            f"{sample_id} has no peaks for {path_to_celltype(filepath)}, exiting. Set skip_empty_peaks to True to skip empty peaks."
+            f"No peaks found for {path_to_celltype(filepath)}, exiting. Set skip_empty_peaks to True to skip empty peaks."
         )
     return False
 
@@ -109,8 +109,6 @@ def read_narrow_peak(filepath: str) -> PyRanges:
     """
     Reads .narrowPeak file to PyRanges objects
     filepath (str): A path to the .narrowPeak file
-    sample_id (str): Sample identifier
-    skip_empty_peaks (bool): If True skips celltypes with no peaks found
     """
     # read narrow peaks to DataFrame
     narrow_peak = read_csv(filepath, sep="\t", header=None)
@@ -137,7 +135,7 @@ def main():
     narrow_peak_dict = {
         path_to_celltype(filepath): read_narrow_peak(filepath)
         for filepath in narrow_peak_files
-        if not check_if_empty(filepath, args.sample_id, args.skip_empty_peaks)
+        if not check_if_empty(filepath, args.skip_empty_peaks)
     }
 
     # infer consensus peaks
@@ -150,7 +148,7 @@ def main():
 
     # save consensus peaks to .bed
     consensus_peaks.to_bed(
-        path=f"{args.sample_id}_consensus.bed",
+        path=args.consensus,
         keep=True,
         compression="infer",
         chain=False,
