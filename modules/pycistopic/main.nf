@@ -6,32 +6,20 @@ def lowMemoryError(sample, task_name) {
 
 process SplitCellTypeAnnotation {
     tag "Splitting celltype annotation"
-    executor "local"
     input:
         path(sample_table)
         path(celltypes)
     output:
-        path('*.csv')
+        path('output/*.csv'), emit: celltypes
+        path('filtered_sample_table.csv'), emit: sample_table
     script:
         """
-        # Get sample list
-        tail -n +2 "${sample_table}" | cut -d "," -f1 | sort | uniq > samples.txt
-        # Extract the header
-        header=\$(head -n 1 "${celltypes}")
-        # Get only relevant rows
-        grep -f samples.txt $celltypes > filtered_annotation.csv
-
-        # Read unique cell types, skipping the header
-        tail -n +2 filtered_annotation.csv | cut -d "," -f3 | sort | uniq | while read celltype; do
-            # Replace spaces with underscores in celltype for file naming
-            safe_celltype=\$(echo "\${celltype}" | tr ' ' '_')
-            
-            # Create a file with the header for each cell type
-            echo "\${header}" > "\${safe_celltype}.csv"
-            
-            # Append rows matching the cell type
-            grep ",\$celltype\\\$" filtered_annotation.csv >> "\${safe_celltype}.csv"
-        done
+        split_annotation.py \\
+            --sample_table $sample_table \\
+            --celltype_annotation $celltypes \\
+            --output_dir output \\
+            --filtered_sample_table filtered_sample_table.csv \\
+            --dropna
         """
     
 }

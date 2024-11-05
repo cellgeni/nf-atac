@@ -13,24 +13,34 @@ workflow  PYCISTOPIC {
         blacklist
         tss_bed
     main:
-        fragments = Channel
-                        .fromPath(sample_table, checkIfExists: true)
-                        .splitCsv(skip: 1)
-                        .map{ sample_id, cellranger_arc_output -> 
-                                [
-                                    sample_id,
-                                    file( "${cellranger_arc_output}/${params.fragments_filename}" ),
-                                    file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
-                                    file( "${cellranger_arc_output}/${params.barcode_metrics_filename}" ),
-                                ]
-                        }
-                        .collect(flat: false)
-                        .transpose()
-                        .toList()
-        // Split celltypes
-        celltypes = SplitCellTypeAnnotation(sample_table, celltype_annotation)
+        // Split celltypes and filter sample table from duplicates
+        SplitCellTypeAnnotation(sample_table, celltype_annotation)
 
-        // Make pseudobulk for each sample
+        // Get splited celltype files
+        celltypes = SplitCellTypeAnnotation.out.celltypes
+
+        // Get fragments and barcode metrics from filtered sample table. Steps' description:
+        // 1) split sample_table in rows (skipping header)
+        // 2) convert cellranger-arc output dir to fragments paths
+        // 3) convert everything to List with elements [sample_id, fragments_path, fragments_idx_path, barcode_metrics_path]
+        // 4) Transpose List -> Channel(sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list)
+        // 5) Convert Channel ->  List[sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list]
+        fragmets = SplitCellTypeAnnotation.out
+                                          .sample_table
+                                          .splitCsv(skip: 1)
+                                          .map{ sample_id, cellranger_arc_output -> 
+                                            [
+                                                sample_id,
+                                                file( "${cellranger_arc_output}/${params.fragments_filename}" ),
+                                                file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
+                                                file( "${cellranger_arc_output}/${params.barcode_metrics_filename}" ),
+                                            ]
+                                          }
+                                          .collect(flat: false)
+                                          .transpose()
+                                          .toList()
+
+        Make pseudobulk for each sample
         pseudobulk = MakePseudobulk(
             fragments,
             celltypes,
