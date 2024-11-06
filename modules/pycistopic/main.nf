@@ -42,7 +42,7 @@ process SplitCellTypeAnnotation {
 
 // process to make pseudobulk profiles from fragments and celltype annototion
 process MakePseudobulk {
-    tag "Making pseudobulks for ${sample_id_list.size} samples"
+    tag "Making pseudobulk for ${celltypes.getName().split('\\.')[0]}"
     input:
         tuple val(sample_id_list), path(fragments, stageAs: 'fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*'), path(barcode_metrics, stageAs: 'fragments/*/*')
         each path(celltypes)
