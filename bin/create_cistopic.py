@@ -97,7 +97,7 @@ def read_metrics(qc_dir: str, sample_id: str, barcodes: ndarray) -> DataFrame:
     # if there is only 1 passing barcode it is returned as 0d array
     # as result of numpy squeeze function see
     # https://github.com/aertslab/pycisTopic/blob/787ce422a37f5975b0ebb9e7b19eeaed44847501/src/pycisTopic/qc.py#L140C40-L140C50
-    # barcodes = barcodes if barcodes.shape else [barcodes[()]]
+    barcodes = barcodes if barcodes.shape else [barcodes[()]]
     # read data and filter barcodes
     fragments_stats = read_parquet(fragments_stats_file).to_pandas()
     fragments_stats = fragments_stats.set_index("CB")
