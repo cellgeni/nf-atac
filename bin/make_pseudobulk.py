@@ -5,6 +5,7 @@ import sys
 import logging
 from typing import List, Dict
 from colored_logger import setup_logging
+from tempfile import TemporaryDirectory
 from pandas import read_csv, read_table, DataFrame, concat
 from pandas.errors import InvalidColumnName, DataError
 from pycisTopic.pseudobulk_peak_calling import export_pseudobulk
@@ -119,13 +120,18 @@ def read_chromsizes(chromsizes_file: str) -> DataFrame:
     return chromsizes
 
 
-def read_barcode_metrics(barcode_metrics_file: str, fragments_col: str) -> DataFrame:
+def read_barcode_metrics(
+    barcode_metrics_file: str, barcode_col: str, fragments_col: str
+) -> DataFrame:
     """
     Reads cellranger-arc output per_barcode_metrics.csv file
     barcode_metrics_file (str): a path to per_barcode_metrics.csv file
+    barcode_col str: a name of the column with barcode names
     fragments_col str: a name of the column with counts of fragments per barcode
     """
-    barcode_metrics = read_csv(barcode_metrics_file, usecols=["barcode", fragments_col])
+    barcode_metrics = read_csv(
+        barcode_metrics_file, usecols=[barcode_col, fragments_col]
+    )
     return barcode_metrics
 
 
@@ -133,6 +139,7 @@ def filter_empty_fragments(
     celltypes: DataFrame,
     barcode_metrics_list: List[str],
     celltype_col: str,
+    barcode_col: str,
     fragments_col: str,
     skip_empty_fragments: bool,
 ) -> DataFrame:
@@ -141,13 +148,16 @@ def filter_empty_fragments(
     celltypes (DataFrame): a dataframe with barcode/celltype annotation
     barcode_metrics (List[str]): a List of barcode metrics file paths
     celltype_col (str): a name of the column with celltype labels in celltypes DataFrame
+    barcode_col str: a name of the column with barcode names
     fragments_col str: a name of the column with counts of fragments per barcode
     skip_empty_fragments: if true removes all celltypes with zero fragments from DataFrame
     """
     celltype_filtered = list()
     for sample_id, barcode_metrics_path in barcode_metrics_list.items():
         # read barcode metrics file
-        barcode_metrics = read_barcode_metrics(barcode_metrics_path, fragments_col)
+        barcode_metrics = read_barcode_metrics(
+            barcode_metrics_path, barcode_col, fragments_col
+        )
         # subsample the celltype annotation file
         celltype_sample = celltypes[celltypes.sample_id == sample_id].copy()
         # filter annotation from celltypes with no fragments
@@ -156,6 +166,7 @@ def filter_empty_fragments(
             celltypes=celltype_sample,
             barcode_metrics=barcode_metrics,
             celltype_col=celltype_col,
+            barcode_col=barcode_col,
             fragments_col=fragments_col,
             skip_empty_fragments=skip_empty_fragments,
         )
@@ -311,7 +322,7 @@ def filter_empty_fragments(
         celltype_subsample = celltypes[celltypes[sample_id_col] == sample_id].copy()
         # read barcode metrics
         barcode_metrics = read_barcode_metrics(
-            barcode_metrics_dict[sample_id], fragments_col
+            barcode_metrics_dict[sample_id], barcode_col, fragments_col
         )
         # check wether we want to drop sample
         drop_sample = filter_empty_fragments_for_sample(
@@ -414,17 +425,19 @@ def main():
     os.makedirs(args.bigwig_dir, exist_ok=True)
 
     # run pseudobulk generation
-    bw_paths, bed_paths = export_pseudobulk(
-        input_data=celltypes,
-        variable=args.celltype_col,
-        sample_id_col=args.sample_id_col,
-        chromsizes=chromsizes,
-        bed_path=args.output_dir,
-        bigwig_path=args.bigwig_dir,
-        path_to_fragments=filtered_fragments_dict,
-        n_cpu=args.cpus,
-        normalize_bigwig=True,
-    )
+    with TemporaryDirectory(prefix="pb", dir="/tmp") as temp_dir:
+        bw_paths, bed_paths = export_pseudobulk(
+            input_data=celltypes,
+            variable=args.celltype_col,
+            sample_id_col=args.sample_id_col,
+            chromsizes=chromsizes,
+            bed_path=args.output_dir,
+            bigwig_path=args.bigwig_dir,
+            path_to_fragments=filtered_fragments_dict,
+            n_cpu=args.cpus,
+            normalize_bigwig=True,
+            temp_dir=temp_dir,
+        )
 
 
 if __name__ == "__main__":
