@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import glob
 import logging
 import warnings
 import argparse
 from typing import Dict
+from functools import wraps
 from pandas import read_csv
 from pyranges import PyRanges
 from colored_logger import setup_logging
@@ -80,6 +82,32 @@ def init_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def block_stdout(func):
+    """
+    This decorator blocks stdout for get_consensus_peaks function as I keep geting error:
+        'Warning! Start and End columns now have different dtypes: int64 and int32'.
+    I have no idea where this might be happening inside the function and have no other way to influence this.
+    The code that raises this Warning comes from PyRanges, you can find it here:
+    https://github.com/pyranges/pyranges/blob/4f0a153336e7153cdfea15b141ce4ea35a24e233/pyranges/pyranges_main.py#L312
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Save the original stdout
+        original_stdout = sys.stdout
+        try:
+            # Redirect stdout to /dev/null
+            sys.stdout = open(os.devnull, "w")
+            # Call the function
+            return func(*args, **kwargs)
+        finally:
+            # Restore the original stdout
+            sys.stdout.close()
+            sys.stdout = original_stdout
+
+    return wrapper
+
+
 def path_to_celltype(filepath: str) -> str:
     """
     Get celltype name from .narrowPeak file path
@@ -142,14 +170,16 @@ def main():
         if not check_if_empty(filepath, args.skip_empty_peaks)
     }
 
+    # get stdoutput blocked for consensus peak calling
+    get_consensus_peaks_stdoutblocked = block_stdout(get_consensus_peaks)
+
     # infer consensus peaks
-    with warnings.catch_warnings(action="ignore"):
-        consensus_peaks = get_consensus_peaks(
-            narrow_peaks_dict=narrow_peak_dict,
-            peak_half_width=args.peak_half_width,
-            chromsizes=chromsizes,
-            path_to_blacklist=args.blacklist,
-        )
+    consensus_peaks = get_consensus_peaks_stdoutblocked(
+        narrow_peaks_dict=narrow_peak_dict,
+        peak_half_width=args.peak_half_width,
+        chromsizes=chromsizes,
+        path_to_blacklist=args.blacklist,
+    )
 
     # save consensus peaks to .bed
     consensus_peaks.to_bed(
