@@ -1,14 +1,16 @@
-#!/usr/bin/env python
-import argparse
+#!/usr/bin/env python3
+
 import os
 import glob
-from typing import Dict
-from make_pseudobulk import read_chromsizes
 import logging
-from colored_logger import setup_logging
-from pycisTopic.iterative_peak_calling import get_consensus_peaks
-from pyranges import PyRanges
+import warnings
+import argparse
+from typing import Dict
 from pandas import read_csv
+from pyranges import PyRanges
+from colored_logger import setup_logging
+from make_pseudobulk import read_chromsizes
+from pycisTopic.iterative_peak_calling import get_consensus_peaks
 
 
 NARROW_PEAK_COLUMNS = [
@@ -141,12 +143,13 @@ def main():
     }
 
     # infer consensus peaks
-    consensus_peaks = get_consensus_peaks(
-        narrow_peaks_dict=narrow_peak_dict,
-        peak_half_width=args.peak_half_width,
-        chromsizes=chromsizes,
-        path_to_blacklist=args.blacklist,
-    )
+    with warnings.catch_warnings(action="ignore"):
+        consensus_peaks = get_consensus_peaks(
+            narrow_peaks_dict=narrow_peak_dict,
+            peak_half_width=args.peak_half_width,
+            chromsizes=chromsizes,
+            path_to_blacklist=args.blacklist,
+        )
 
     # save consensus peaks to .bed
     consensus_peaks.to_bed(
