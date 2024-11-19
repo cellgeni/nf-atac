@@ -44,8 +44,8 @@ workflow {
         error "Please specify all of the arguments listed above"
     }
     
-    // Read sample table and convert path to dir to path to fragments and barcode matrics
-    sample_table = params.sample_table
+    // Convert sample_table to path
+    sample_table = file( params.sample_table )
 
     // Load celltype annotation file
     celltype_annotation = file( params.celltypes )
