@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 import os
 import pickle
 import argparse
 from typing import List
-from polars import read_parquet
 from numpy import ndarray
-from pandas import DataFrame
+from pandas import DataFrame, read_parquet
 from pycisTopic.qc import get_barcodes_passing_qc_for_sample
 from pycisTopic.cistopic_class import create_cistopic_object_from_fragments
 
@@ -99,7 +99,7 @@ def read_metrics(qc_dir: str, sample_id: str, barcodes: ndarray) -> DataFrame:
     # https://github.com/aertslab/pycisTopic/blob/787ce422a37f5975b0ebb9e7b19eeaed44847501/src/pycisTopic/qc.py#L140C40-L140C50
     barcodes = barcodes if barcodes.shape else [barcodes[()]]
     # read data and filter barcodes
-    fragments_stats = read_parquet(fragments_stats_file).to_pandas()
+    fragments_stats = read_parquet(fragments_stats_file, engine="pyarrow")
     fragments_stats = fragments_stats.set_index("CB")
     fragments_stats = fragments_stats.loc[barcodes].copy()
     return fragments_stats
