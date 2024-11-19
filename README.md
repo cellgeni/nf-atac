@@ -23,10 +23,10 @@ This pipeline performs peak calling for ATAC data (only cisTopic option is avail
 ## Examples of use:
 1. Perform peak calling
 ```shell
-nextflow run main.nf --sample_table ./examples/samples.csv --celltypes examples/celltypes.csv
+nextflow run main.nf --sample_table ./examples/samples_table.csv --celltypes examples/celltype_annotation.csv
 ```
 
 2. Perform peak calling and additionally create a cisTopic object
 ```shell
-nextflow run main.nf --sample_table ./examples/samples.csv --celltypes examples/celltypes.csv --cisTopicObject
+nextflow run main.nf --sample_table ./examples/samples_table.csv --celltypes examples/celltype_annotation.csv --cisTopicObject
 ```
