@@ -14,31 +14,35 @@ workflow  PYCISTOPIC {
         tss_bed
         cisTopicObjectFlag
     main:
-        // Split celltypes and filter sample table from duplicates
-        SplitCellTypeAnnotation(sample_table, celltype_annotation)
-
-        // Get splited celltype files
-        celltypes = SplitCellTypeAnnotation.out.celltypes
-
-        // Get fragments and barcode metrics paths from filtered sample table
-        fragments = SplitCellTypeAnnotation.out
-                                          .sample_table
-                                          .splitCsv(skip: 1)
-                                          .map{ sample_id, cellranger_arc_output -> 
-                                            [
-                                                sample_id,
-                                                file( "${cellranger_arc_output}/${params.fragments_filename}" ),
-                                                file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
-                                                file( "${cellranger_arc_output}/${params.barcode_metrics_filename}" ),
-                                            ]
-                                          }
-        // Conver channgel to list:
+        // Get fragments and barcode metrics paths from sample table
+        fragments = Channel.fromPath(sample_table, checkIfExists: true)
+                            .splitCsv(skip: 1)
+                            .map{ sample_id, cellranger_arc_output -> 
+                            [
+                                sample_id,
+                                file( "${cellranger_arc_output}/${params.fragments_filename}" ),
+                                file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
+                                file( "${cellranger_arc_output}/${params.barcode_metrics_filename}" ),
+                            ]
+                            }
+        
+        // Convert channel to list:
         // 1) Collect everything to List with elements [sample_id, fragments_path, fragments_idx_path, barcode_metrics_path]
         // 2) Transpose List -> Channel(sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list)
         // 3) Convert Channel ->  List[sample_id_list, fragments_path_list, fragments_idx_path_list, barcode_metrics_path_list]
         fragments_list = fragments.collect(flat: false)
                                   .transpose()
                                   .toList()
+
+        // Split celltypes and filter sample table from duplicates
+        SplitCellTypeAnnotation(fragments_list, celltype_annotation)
+
+        // Get splited celltype files and combine them with fragment counts
+        celltype_fragments = SplitCellTypeAnnotation.out.celltype_fragments.splitCsv()
+        celltypes = SplitCellTypeAnnotation.out.celltypes
+                                               .map{ celltype_path -> [ celltype_path.baseName, celltype_path ] }
+                                               .transpose()
+                                               .combine(celltype_fragments, by: 0)
 
         // Make pseudobulk for each sample
         pseudobulk = MakePseudobulk(
