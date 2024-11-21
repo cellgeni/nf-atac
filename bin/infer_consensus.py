@@ -104,7 +104,6 @@ def block_stdout(func):
             # Restore the original stdout
             sys.stdout.close()
             sys.stdout = original_stdout
-
     return wrapper
 
 
