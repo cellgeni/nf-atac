@@ -17,22 +17,37 @@ def MakePseudobulkErrorHandler(exitStatus, celltypes) {
     }
 }
 
+def MakePseudobulkMemory(fragments_num, attempt) {
+    def a = 2.3e-7
+    def b = 32
+    def x = fragments_num.toDouble()
+    def mem = Math.ceil(a * x + b) + 32 * (attempt - 1)
+    return "${mem as int}.GB"
+}
+
 process SplitCellTypeAnnotation {
     tag "Splitting celltype annotation"
     input:
-        path(sample_table)
+        tuple val(sample_id_list), path(fragments, stageAs: 'fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*'), path(barcode_metrics, stageAs: 'fragments/*/*')
         path(celltypes)
     output:
         path('output/*.csv'), emit: celltypes
-        path('filtered_sample_table.csv'), emit: sample_table
+        path('fragments_celltype_x_sample.csv'), emit: fragments_celltype_x_sample
+        path('fragments_per_celltype.csv'), emit: celltype_fragments
+        path('fragments_per_sample.csv'), emit: sample_fragments
         path('splitcelltypes.log'), emit: log
     script:
+        def sample_id = sample_id_list.join(' ')
         """
         split_annotation.py \\
-            --sample_table $sample_table \\
+            --sample_id $sample_id \\
             --celltype_annotation $celltypes \\
+            --barcode_metrics $barcode_metrics \\
             --output_dir output \\
             --filtered_sample_table filtered_sample_table.csv \\
+            --fragments_celltype_x_sample fragments_celltype_x_sample.csv \\
+            --fragments_per_celltype fragments_per_celltype.csv \\
+            --fragments_per_sample fragments_per_sample.csv \\
             --logfile splitcelltypes.log \\
             --dropna
         """
@@ -45,7 +60,7 @@ process MakePseudobulk {
     tag "Making pseudobulk for ${celltypes.getName().split('\\.')[0]}"
     input:
         tuple val(sample_id_list), path(fragments, stageAs: 'fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*'), path(barcode_metrics, stageAs: 'fragments/*/*')
-        each path(celltypes)
+        tuple val(celltype_name), path(celltypes), val(fragments_num)
         path(chromsizes)
     output:
         path('output/*.tsv.gz'), emit: fragments
@@ -53,7 +68,6 @@ process MakePseudobulk {
         path('*.log'), emit: log
     script:
         def sample_id = sample_id_list.join(' ')
-        def celltype_name = celltypes.getName().split('\\.')[0]
         """
         make_pseudobulk.py \\
                 --sample_id $sample_id \\
