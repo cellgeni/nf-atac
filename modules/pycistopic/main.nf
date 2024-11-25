@@ -4,6 +4,7 @@ def lowMemoryError(sample, task_name) {
     return 'retry'
 }
 
+// function to handle errors in MakePseudobulk process
 def MakePseudobulkErrorHandler(exitStatus, celltypes) {
     if ( exitStatus == 130 ) {
         log.warn "The memory is to low to perform MakePseudobulk"
@@ -17,24 +18,27 @@ def MakePseudobulkErrorHandler(exitStatus, celltypes) {
     }
 }
 
+// function to predict a memory consumption for MakePseudobulk process
 def MakePseudobulkMemory(fragments_num, attempt) {
     def a = 2.3e-7
     def b = 32
     def x = fragments_num.toDouble()
     def mem = Math.ceil(a * x + b) + 32 * (attempt - 1)
-    return "${mem as int}.GB"
+    return mem
 }
 
+// Splits annotation file in separate files (per celltype) and calculates fragments numbers
 process SplitCellTypeAnnotation {
     tag "Splitting celltype annotation"
     input:
-        tuple val(sample_id_list), path(fragments, stageAs: 'fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*'), path(barcode_metrics, stageAs: 'fragments/*/*')
+        tuple val(sample_id_list), path(barcode_metrics, stageAs: 'barcode_metrics/*.csv')
         path(celltypes)
+        path(sample_table)
     output:
         path('output/*.csv'), emit: celltypes
         path('fragments_celltype_x_sample.csv'), emit: fragments_celltype_x_sample
         path('fragments_per_celltype.csv'), emit: celltype_fragments
-        path('fragments_per_sample.csv'), emit: sample_fragments
+        path('updated_sample_table.csv'), emit: sample_table
         path('splitcelltypes.log'), emit: log
     script:
         def sample_id = sample_id_list.join(' ')
@@ -43,11 +47,11 @@ process SplitCellTypeAnnotation {
             --sample_id $sample_id \\
             --celltype_annotation $celltypes \\
             --barcode_metrics $barcode_metrics \\
+            --sample_table $sample_table \\
             --output_dir output \\
-            --filtered_sample_table filtered_sample_table.csv \\
             --fragments_celltype_x_sample fragments_celltype_x_sample.csv \\
             --fragments_per_celltype fragments_per_celltype.csv \\
-            --fragments_per_sample fragments_per_sample.csv \\
+            --updated_sample_table updated_sample_table.csv \\
             --logfile splitcelltypes.log \\
             --dropna
         """
@@ -59,11 +63,11 @@ process SplitCellTypeAnnotation {
 process MakePseudobulk {
     tag "Making pseudobulk for ${celltypes.getName().split('\\.')[0]}"
     input:
-        tuple val(sample_id_list), path(fragments, stageAs: 'fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*'), path(barcode_metrics, stageAs: 'fragments/*/*')
+        tuple val(sample_id_list), path(fragments, stageAs: 'fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*')
         tuple val(celltype_name), path(celltypes), val(fragments_num)
         path(chromsizes)
     output:
-        path('output/*.tsv.gz'), emit: fragments
+        tuple path('output/*.tsv.gz'), val(fragments_num), emit: pseudobulk_fragments
         path('bigwig/*.bw'), emit: bigwig
         path('*.log'), emit: log
     script:
@@ -74,7 +78,6 @@ process MakePseudobulk {
                 --fragments $fragments \\
                 --celltype_annotation $celltypes \\
                 --chromsizes $chromsizes \\
-                --barcode_metrics $barcode_metrics \\
                 --output_dir output \\
                 --bigwig_dir bigwig \\
                 --skip_empty_fragments \\
@@ -88,13 +91,13 @@ process MakePseudobulk {
 process PeakCalling {
     tag "Performing pseudobulk peak calling for sample ${fragments.getName()}"
     input:
-        path(fragments)
+        tuple path(pseudobulk_fragments), val(fragments_num)
     output:
         path('narrowPeaks/*.narrowPeak')
     script:
         """
         peak_calling.py \\
-                --bed_path $fragments \\
+                --bed_path $pseudobulk_fragments \\
                 --output_dir narrowPeaks \\
                 --cpus $task.cpus \\
                 --skip_empty_peaks

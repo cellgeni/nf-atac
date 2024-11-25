@@ -62,6 +62,7 @@ workflow {
         chromsizes,
         blacklist,
         tss_bed,
+        params.fromPseudobulk,
         params.cisTopicObject
     )
 

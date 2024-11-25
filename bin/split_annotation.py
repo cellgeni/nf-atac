@@ -38,6 +38,12 @@ def init_parser() -> argparse.ArgumentParser:
         help="Specify Cellranger's per_barcode_metrics.csv files in the same order as sample ids",
     )
     parser.add_argument(
+        "--sample_table",
+        type=str,
+        metavar="<file>",
+        help="Specify sample table file",
+    )
+    parser.add_argument(
         "--output_dir",
         metavar="<dir>",
         type=str,
@@ -45,11 +51,11 @@ def init_parser() -> argparse.ArgumentParser:
         default="output",
     )
     parser.add_argument(
-        "--filtered_sample_table",
+        "--updated_sample_table",
         metavar="<file>",
         type=str,
-        help="Specify a name for the filtered sample table",
-        default="filtered_sample_table.csv",
+        help="Specify a name for the updated sample table",
+        default="updated_sample_table.csv",
     )
     parser.add_argument(
         "--celltype_col",
@@ -62,7 +68,7 @@ def init_parser() -> argparse.ArgumentParser:
         "--sample_id_col",
         metavar="<val>",
         type=str,
-        help="Specify a name for sample_id column in annotation and sample files",
+        help="Specify a name for sample_id column in annotation and sample table",
         default="sample_id",
     )
     parser.add_argument(
@@ -83,7 +89,7 @@ def init_parser() -> argparse.ArgumentParser:
         "--filedir_col",
         metavar="<val>",
         type=str,
-        help="Specify a name for a cellranger-arc output directory column in sample file",
+        help="Specify a name for a cellranger-arc output directory column in sample table",
         default="filedir",
     )
     parser.add_argument(
@@ -117,14 +123,46 @@ def init_parser() -> argparse.ArgumentParser:
         help="Specify a name for the fragments_per_celltype file",
         default="fragments_per_celltype.csv",
     )
-    parser.add_argument(
-        "--fragments_per_sample",
-        metavar="<file>",
-        type=str,
-        help="Specify a name for the fragments_per_sample file",
-        default="fragments_per_sample.csv",
-    )
     return parser
+
+
+def validate_sample_table_columns(
+    sample_table_columns: List[str], sample_id_col: str, filedir_col: str
+) -> None:
+    """
+    Check if sample dataframe contains all necessary columns
+    Args:
+        sample_table_columns (List[str]): a list of columns in sample table
+        sample_id_col (str): a name for sample_id column in sample files
+        filedir_col (str): a name for cellranger-arc output directory column in annotation and sample files
+
+    Raises:
+        InvalidColumnName: if column names differ from reference names
+    """
+    reference_columns = [sample_id_col, filedir_col]
+    if reference_columns != sample_table_columns:
+        raise InvalidColumnName(
+            "Sample table file must have '{sample_id_col}' and '{filedir_col}' columns"
+        )
+
+
+def read_sample_table(filepath: str, sample_id_col: str, filedir_col: str) -> DataFrame:
+    """
+    Read and validate sample table
+    Args:
+        filepath (str): a path to sample table
+        sample_id_col (str): a name for sample_id column in sample files
+        filedir_col (str): a name for cellranger-arc output directory column in annotation and sample files
+
+    Returns:
+        DataFrame: sample table
+    """
+    # read to DataFrame
+    sample_df = read_csv(filepath)
+    # check if column names are valid
+    df_columns = sample_df.columns.to_list()
+    validate_sample_table_columns(df_columns, sample_id_col, filedir_col)
+    return sample_df
 
 
 def validate_sample_list(samples: List[str]) -> None:
@@ -375,6 +413,23 @@ def get_fragments_per_sample(
     return fragments_per_sample_df
 
 
+def get_fragments_per_celltype(
+    fragments_celltype_x_sample: DataFrame, sep="_"
+) -> Series:
+    """
+    Get fragments per celltype from fragments_celltype_x_sample DataFrame
+    Args:
+        fragments_celltype_x_sample (DataFrame): fragment counts table of shape=(n_celltypes, n_samples)
+        sep (str, optional): separator to the celltype names instead of space. Defaults to '_'.
+
+    Returns:
+        Series: fragments per celltype
+    """
+    fragments_per_celltype = fragments_celltype_x_sample.sum(axis=1)
+    fragments_per_celltype.index = fragments_per_celltype.index.str.replace(" ", sep)
+    return fragments_per_celltype
+
+
 def drop_zero_fragment_celltypes(
     fragments_per_celltype: Series, celltypes: DataFrame, celltype_col: str
 ) -> DataFrame:
@@ -425,6 +480,36 @@ def split_celltypes(celltypes_df: DataFrame, celltype_col: str, output_dir: str)
         celltype_df.to_csv(celltype_filename, index=False)
 
 
+def update_sample_table(
+    sample_table: DataFrame,
+    sample_to_metrics: Dict[str, DataFrame],
+    sample_id_col: str,
+    fragments_col: str,
+) -> DataFrame:
+    """
+    Add fragment count to sample table
+    Args:
+        sample_table (DataFrame): a sample table
+        sample_to_metrics (Dict[str, DataFrame]): a Dict with barcode metrics DataFrames for each sample
+        sample_id_col (str): a name for sample_id column in sample table
+        fragments_col (str): a name for fragments number column in barcode metrics file
+
+    Returns:
+        DataFrame: Updated sample table with fragment counts
+    """
+    # set sample_id as index for sample_table
+    updated_sample_table = sample_table
+    # calculate fragments per sample
+    fragments_per_sample = get_fragments_per_sample(
+        sample_to_metrics, fragments_col
+    ).reset_index(names=sample_id_col)
+    # # join sample table and fragments per sample
+    updated_sample_table = sample_table.merge(
+        fragments_per_sample, on=sample_id_col
+    ).set_index(sample_id_col)
+    return updated_sample_table
+
+
 def main():
     # parse script arguments
     parser = init_parser()
@@ -435,6 +520,11 @@ def main():
 
     # check if there are duplicates in sample list
     validate_sample_list(args.sample_id)
+
+    # read sample table
+    sample_table = read_sample_table(
+        args.sample_table, args.sample_id_col, args.filedir_col
+    )
 
     # read celltype annotation
     celltypes = read_celltype_annotation(
@@ -462,9 +552,11 @@ def main():
         args.barcode_col,
         args.fragments_col,
     )
-    fragments_per_celltype = fragments_celltype_x_sample.sum(axis=1)
-    fragments_per_sample = get_fragments_per_sample(
-        sample_to_metrics, args.fragments_col
+    fragments_per_celltype = get_fragments_per_celltype(fragments_celltype_x_sample)
+
+    # update sample table
+    updated_sample_table = update_sample_table(
+        sample_table, sample_to_metrics, args.sample_id_col, args.fragments_col
     )
 
     # fillter celltypes with zero fragments and split celltype annotation in separate files
@@ -476,9 +568,8 @@ def main():
 
     # save fragment counts
     fragments_celltype_x_sample.to_csv(args.fragments_celltype_x_sample)
-    fragments_per_celltype.index = fragments_per_celltype.index.str.replace(' ', '_')
     fragments_per_celltype.to_csv(args.fragments_per_celltype, header=False)
-    fragments_per_sample.to_csv(args.fragments_per_sample, header=False)
+    updated_sample_table.to_csv(args.updated_sample_table)
 
 
 if __name__ == "__main__":
