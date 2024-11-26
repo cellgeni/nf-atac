@@ -414,19 +414,17 @@ def get_fragments_per_sample(
 
 
 def get_fragments_per_celltype(
-    fragments_celltype_x_sample: DataFrame, sep="_"
+    fragments_celltype_x_sample: DataFrame
 ) -> Series:
     """
     Get fragments per celltype from fragments_celltype_x_sample DataFrame
     Args:
         fragments_celltype_x_sample (DataFrame): fragment counts table of shape=(n_celltypes, n_samples)
-        sep (str, optional): separator to the celltype names instead of space. Defaults to '_'.
 
     Returns:
         Series: fragments per celltype
     """
     fragments_per_celltype = fragments_celltype_x_sample.sum(axis=1)
-    fragments_per_celltype.index = fragments_per_celltype.index.str.replace(" ", sep)
     return fragments_per_celltype
 
 
@@ -568,6 +566,7 @@ def main():
 
     # save fragment counts
     fragments_celltype_x_sample.to_csv(args.fragments_celltype_x_sample)
+    fragments_per_celltype.index = fragments_per_celltype.index.str.replace(' ', '_')
     fragments_per_celltype.to_csv(args.fragments_per_celltype, header=False)
     updated_sample_table.to_csv(args.updated_sample_table)
 
