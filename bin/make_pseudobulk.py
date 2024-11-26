@@ -85,13 +85,6 @@ def init_parser() -> argparse.ArgumentParser:
         default="barcode",
     )
     parser.add_argument(
-        "--fragments_col",
-        metavar="<val>",
-        type=str,
-        help="Specify a name for fragments column in 'per_barcode_metrics.csv' file",
-        default="atac_fragments",
-    )
-    parser.add_argument(
         "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
     )
     parser.add_argument(
@@ -118,26 +111,6 @@ def read_chromsizes(chromsizes_file: str) -> DataFrame:
     return chromsizes
 
 
-def get_fragments_per_sample(
-    filepath: str, samples_in_annotation: List[str], celltype_name: str
-) -> Series:
-    """
-    Reads fragments_celltype_x_sample.csv file
-    Args:
-        filepath (str): a path to fragments_celltype_x_sample.csv file
-        samples_in_annotation (List[str]): a list of sample names that we want to read from fragments_per_sample.csv file
-        celltype_name (str): a name of the celltype that we want to subsample
-
-    Returns:
-        Series: sample fragments for `celltype_name`
-    """
-    fragments_celltype_x_sample = read_csv(
-        filepath, index_col=0, usecols=samples_in_annotation
-    )
-    fragments_per_sample = fragments_celltype_x_sample.loc[celltype_name].copy()
-    return fragments_per_sample
-
-
 def check_missing_samples(
     celltypes: DataFrame, sample_list: List[str], sample_id_col: str, celltype_name: str
 ):
@@ -158,16 +131,76 @@ def check_missing_samples(
         )
 
 
+def get_fragments_per_sample(
+    filepath: str,
+    samples_in_annotation: List[str],
+    celltype_name: str,
+    celltype_col: str,
+) -> Series:
+    """
+    Reads fragments_celltype_x_sample.csv file
+    Args:
+        filepath (str): a path to fragments_celltype_x_sample.csv file
+        samples_in_annotation (List[str]): a list of sample names that we want to read from fragments_per_sample.csv file
+        celltype_name (str): a name of the celltype that we want to subsample
+        celltype_col (str): a name of celltype column in annotation file
+
+    Returns:
+        Series: sample fragments for `celltype_name`
+    """
+    columns_to_use = [celltype_col] + samples_in_annotation
+    fragments_celltype_x_sample = read_csv(
+        filepath, index_col=0, usecols=columns_to_use
+    )
+    fragments_per_sample = fragments_celltype_x_sample.loc[celltype_name].copy()
+    return fragments_per_sample
+
+
+def get_zero_fragment_samples(
+    fragments_celltype_x_sample_path: str,
+    celltypes: DataFrame,
+    celltype_name: str,
+    sample_id_col: str,
+    celltype_col: str,
+) -> List[str]:
+    """
+    Get a sample names with zero fragments found for the `celltype_name`
+    Args:
+        fragments_celltype_x_sample_path (str): a path to fragments_celltype_x_sample_path.csv file
+        celltypes (DataFrame): a dataframe with barcode/celltype annotation for sample_id
+        celltype_name (str):  a name of the celltype in annotation file
+        sample_id_col (str): a name of the column with sample_id labels in celltypes DataFrame
+        celltype_col (str): a name of celltype column in annotation file
+
+    Returns:
+        List[str]: a sample list with zero fragments found for the `celltype_name`
+    """
+    # get samples from annotation
+    samples_in_annotation = celltypes[sample_id_col].unique().tolist()
+    # read fragments_celltype_x_sample file
+    fragments_per_sample = get_fragments_per_sample(
+        fragments_celltype_x_sample_path,
+        samples_in_annotation,
+        celltype_name,
+        celltype_col,
+    )
+    # get samples with zero fragments
+    zero_fragment_samples = fragments_per_sample[
+        fragments_per_sample == 0
+    ].index.tolist()
+    return zero_fragment_samples
+
+
 def drop_empty_samples(
-    sample_list: List[str], celltypes: DataFrame, sample_id_col: str, celltype_name: str
+    sample_list: List[str], celltypes: DataFrame, celltype_name: str, sample_id_col: str
 ) -> DataFrame:
     """
     Drops sample with zero fragments from celltype DataFrame
     Args:
         sample_list (List[str]): a list of samples that we want to drop
         celltypes (DataFrame): a dataframe with barcode/celltype annotation for sample_id
-        sample_id_col (str): a name of the column with sample_id labels in celltypes DataFrame
         celltype_name (str): a name of the celltype in annotation file
+        sample_id_col (str): a name of the column with sample_id labels in celltypes DataFrame
 
     Returns:
         DataFrame: a celltype DataFrame without samples from sample_list
@@ -187,66 +220,36 @@ def drop_empty_samples(
     return celltypes
 
 
-def get_zero_fragment_samples(
-    fragments_celltype_x_sample_path: str,
-    celltypes: DataFrame,
-    celltype_name: str,
-    sample_id_col: str,
-) -> List[str]:
-    """
-    Get a sample names with zero fragments found for the `celltype_name`
-    Args:
-        fragments_celltype_x_sample_path (str): a path to fragments_celltype_x_sample_path.csv file
-        celltypes (DataFrame): a dataframe with barcode/celltype annotation for sample_id
-        celltype_name (str):  a name of the celltype in annotation file
-        sample_id_col (str): a name of the column with sample_id labels in celltypes DataFrame
-
-    Returns:
-        List[str]: a sample list with zero fragments found for the `celltype_name`
-    """
-    # get samples from annotation
-    samples_in_annotation = celltypes[sample_id_col].unique().tolist()
-    # read fragments_celltype_x_sample file
-    fragments_per_sample = get_fragments_per_sample(
-        fragments_celltype_x_sample_path, samples_in_annotation, celltype_name
-    )
-    # get samples with zero fragments
-    zero_fragment_samples = fragments_per_sample[
-        fragments_per_sample == 0
-    ].index.tolist()
-    return zero_fragment_samples
-
-
 def filter_empty_fragments(
     celltypes: DataFrame,
     fragments_celltype_x_sample: str,
+    celltype_name: str,
     sample_id_col: str,
     celltype_col: str,
-    fragments_col: str,
-    barcode_col: str,
-    celltype_name: str,
 ) -> DataFrame:
     """
     Filter samples with zero fragments found
     Args:
         celltypes (DataFrame): a dataframe with barcode/celltype annotation
         fragments_celltype_x_sample (str): a path to fragments_celltype_x_sample.csv file
-        sample_id_col (str): a name of the column with sample_id labels in celltypes DataFrame
-        celltype_col (str): a name of the column with celltype labels in celltypes DataFrame
-        fragments_col (str): a name of the column with counts of fragments per barcode
-        barcode_col (str): a name of the column with barcode names in celltype annotation and barcode metrics files
         celltype_name (str): a name of the celltype in annotation file
+        sample_id_col (str): a name of the column with sample_id labels in celltypes DataFrame
+        celltype_col (str): a name of celltype column in annotation file
 
     Returns:
         DataFrame: filtered dataframe withou zero fragment samples
     """
     # get zero fragment samples
     zero_fragment_samples = get_zero_fragment_samples(
-        fragments_celltype_x_sample, celltypes, celltype_name, sample_id_col
+        fragments_celltype_x_sample,
+        celltypes,
+        celltype_name,
+        sample_id_col,
+        celltype_col,
     )
     # drop samples with zero fragments found
     filtered_celltypes = drop_empty_samples(
-        zero_fragment_samples, celltypes, sample_id_col, celltype_name
+        zero_fragment_samples, celltypes, celltype_name, sample_id_col
     )
     return filtered_celltypes
 
@@ -257,8 +260,6 @@ def read_celltype_annotation(
     fragments_celltype_x_sample: str,
     sample_id_col: str,
     celltype_col: str,
-    fragments_col: str,
-    barcode_col: str,
 ) -> DataFrame:
     """
     Read cell-type annotation file to pandas DataFrame
@@ -267,9 +268,7 @@ def read_celltype_annotation(
         sample_list (List[str]): a list of samples mentioned in sample table
         fragments_celltype_x_sample (str): a path to fragments_celltype_x_sample.csv file
         sample_id_col (str): a name of the column with sample_id labels in celltypes DataFrame
-        celltype_col (str): a name of the column with celltype labels in celltypes DataFrame
-        fragments_col (str): a name of the column with counts of fragments per barcode
-        barcode_col (str): a name of the column with barcode names in celltype annotation and barcode metrics files
+        celltype_col (str): a name of celltype column in annotation file
 
     Raises:
         SystemExit: if no fragments found for the celltype
@@ -286,18 +285,16 @@ def read_celltype_annotation(
     filtered_celltypes = filter_empty_fragments(
         celltypes,
         fragments_celltype_x_sample,
+        celltype_name,
         sample_id_col,
         celltype_col,
-        fragments_col,
-        barcode_col,
-        celltype_name,
     )
     # check if DataFrame is empty
     if filtered_celltypes.empty:
         logging.info(f"There is no fragments found for {celltype_name} celltype")
         raise SystemExit
     # get sample list
-    filtered_sample_list = celltypes[sample_id_col].unique().tolist()
+    filtered_sample_list = filtered_celltypes[sample_id_col].unique().tolist()
     return filtered_celltypes, filtered_sample_list
 
 
@@ -320,8 +317,6 @@ def main():
         args.fragments_celltype_x_sample,
         args.sample_id_col,
         args.celltype_col,
-        args.fragments_col,
-        args.barcode_col,
     )
 
     # subsample samples present in celltype DataFrame
