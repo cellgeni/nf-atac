@@ -61,10 +61,11 @@ process SplitCellTypeAnnotation {
 
 // process to make pseudobulk profiles from fragments and celltype annototion
 process MakePseudobulk {
-    tag "Making pseudobulk for ${celltypes.getName().split('\\.')[0]}"
+    tag "Making pseudobulk for ${celltype_name}"
     input:
         tuple val(sample_id_list), path(fragments, stageAs: 'fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*')
         tuple val(celltype_name), path(celltypes), val(fragments_num)
+        path(fragments_celltype_x_sample)
         path(chromsizes)
     output:
         tuple path('output/*.tsv.gz'), val(fragments_num), emit: pseudobulk_fragments
@@ -77,10 +78,10 @@ process MakePseudobulk {
                 --sample_id $sample_id \\
                 --fragments $fragments \\
                 --celltype_annotation $celltypes \\
+                --fragments_celltype_x_sample $fragments_celltype_x_sample \\
                 --chromsizes $chromsizes \\
                 --output_dir output \\
                 --bigwig_dir bigwig \\
-                --skip_empty_fragments \\
                 --cpus $task.cpus \\
                 --logfile "pseudobulk.${celltype_name}.log"
         """
@@ -98,6 +99,7 @@ process PeakCalling {
         """
         peak_calling.py \\
                 --bed_path $pseudobulk_fragments \\
+                //--pseudobulk_table $params.pseudobulk_table_name \\
                 --output_dir narrowPeaks \\
                 --cpus $task.cpus \\
                 --skip_empty_peaks
