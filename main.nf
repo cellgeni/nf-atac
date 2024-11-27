@@ -1,5 +1,6 @@
 // NEXTFLOW FLAGS
-nextflow.enable.dsl = 2
+nextflow.enable.dsl=2
+nextflow.preview.output=true
 
 // IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
@@ -68,4 +69,22 @@ workflow {
 
     // PYCISTOPIC.out.bed.view()
     // PYCISTOPIC.out.bigwig.view()
+}
+
+output {
+    'narrowPeaks' {
+        index {
+            path '../pseudobulk_peaks.csv'
+            header true
+            mapper { celltype_name, fragments_num, large_peaks_num, all_peaks_num, narrow_peaks -> 
+            [
+                celltype: celltype_name,
+                fragments: fragments_num,
+                large_peaks: large_peaks_num,
+                all_peaks: all_peaks_num,
+                path: narrow_peaks
+            ]
+            }
+        }
+    }
 }
