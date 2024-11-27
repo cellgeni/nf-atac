@@ -11,9 +11,6 @@ workflow PEAKCALLING {
         sample_table
         celltype_annotation
         chromsizes
-        blacklist
-        tss_bed
-        fromPseudobulkFlag
     main:
         // Get barcode metrics and convert channel to list:
         // 1) Get barcode metrics paths from sample table
@@ -74,36 +71,71 @@ workflow PEAKCALLING {
 }
 
 
-workflow  PYCISTOPIC {
+workflow INFERPEAKS {
     take:
+        narrow_peaks
         sample_table
-        celltype_annotation
         chromsizes
         blacklist
         tss_bed
-        fromPseudobulkFlag
-        cisTopicObjectFlag
     main:
-        // Create pseudobulk and call peaks
-        if ( !fromPseudobulkFlag ) {
-            PEAKCALLING(
-                sample_table,
-                celltype_annotation,
-                chromsizes,
-                blacklist,
-                tss_bed,
-                fromPseudobulkFlag
-            )
-        }
+        // Get fragment paths from sample table
+        fragments = Channel.fromPath(sample_table, checkIfExists: true)
+                            .splitCsv(skip: 1)
+                            .map{ sample_id, cellranger_arc_output, fragments_num -> 
+                            [
+                                sample_id,
+                                file( "${cellranger_arc_output}/${params.fragments_filename}" ),
+                                file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
+                                fragments_num
+                            ]
+                            }
+
+        // Get .narrowPeak paths
+        narrow_peak_paths = narrow_peaks.map{ celltype, fragments, large_peaks, all_peaks, path -> path}
 
         // Get consensus peaks
-        consensus = InferConsensus(PEAKCALLING.out.narrow_peaks, chromsizes, blacklist).bed.collect()
+        consensus = InferConsensus(narrow_peak_paths, chromsizes, blacklist).bed.collect()
 
         // Perform QC
-        fragments_consensus_qc = QualityControl(PEAKCALLING.out.fragments, consensus, tss_bed)
+        fragments_consensus_qc = QualityControl(fragments, consensus, tss_bed)
 
         // Create cisTopic object
-        if (cisTopicObjectFlag) {
-            CreateCisTopicObject(fragments_consensus_qc, blacklist)
+        CreateCisTopicObject(fragments_consensus_qc, blacklist)
+}
+
+
+workflow  PYCISTOPIC {
+    take:
+        sample_table
+        celltypes
+        chromsizes
+        blacklist
+        tss_bed
+        callPeaksFlag
+        inferConsensusFlag
+    main:
+        // Create pseudobulk, call peaks and update sample table
+        if ( callPeaksFlag ) {
+            PEAKCALLING(
+                sample_table,
+                celltypes,
+                chromsizes
+            )
+            // get pseudobulk peaks and updated sample table
+            pseudobulk_peaks = PEAKCALLING.out.narrow_peaks
+            sample_table = PEAKCALLING.out.sample_table
+        } else {
+            narrow_peaks = Channel.fromPath(celltypes, checkIfExists: true).splitCsv()
+        }
+
+        if ( inferConsensusFlag ) {
+            INFERPEAKS(
+                narrow_peaks,
+                sample_table,
+                chromsizes,
+                blacklist,
+                tss_bed
+            )
         }
 }

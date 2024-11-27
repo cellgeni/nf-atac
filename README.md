@@ -18,15 +18,15 @@ This pipeline performs peak calling for ATAC data (only cisTopic option is avail
 ## Pipeline Arguments
 * `--sample_table`: specify a path to .csv file with sample names and path to the CellRanger-arc output dir (see example below)
 * `--celltypes`: specify a path .csv file with celltype annotation or a path to pseudobulk_peaks.csv file with selected celltypes for consensus peak calling
-* `--CallPeaks`: if specified creates pseudobulks for celltypes specified in `--celltypes` for samples in `--sample_table`
-* `--InferConsensus`: if specified runs a consensus peak calling and outputs cisTopic object for each sample in `--sample_table`
+* `--callPeaks`: if specified creates pseudobulks for celltypes specified in `--celltypes` for samples in `--sample_table`
+* `--inferConsensus`: if specified runs a consensus peak calling and outputs cisTopic object for each sample in `--sample_table`
 
 ## Examples of use:
 ### 1. Perform peak calling
 To run peak calling for each celltype you need to specify *sample table* (see `examples/sample_table.csv`) and *celltype annotation* (see `examples/celltype_annotation.csv`):
 
 ```shell
-nextflow run main.nf --CallPeaks --sample_table ./examples/sample_table.csv --celltypes ./examples/celltype_annotation.csv
+nextflow run main.nf --callPeaks --sample_table ./examples/sample_table.csv --celltypes ./examples/celltype_annotation.csv
 ```
 
 This creates `results` directory with the following files:
@@ -47,7 +47,7 @@ results/
 ### 2. Infer consensus peaks and calculate features
 To run consensus peak calling and feature calculation you need to specify an **updated sample table** generated on previous step (it is essential to use updated table with fragment counts to set appropriate memory limits for jobs) and **pseudobulk peaks table** generated on previous step with selected celltypes:
 ```shell
-nextflow run main.nf --InferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
+nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
 ```
 
 This will create a `consensus_paeks.bed` file and `cisTopic` objects for each sample:
@@ -65,5 +65,5 @@ results
 ### 3. Perform peak calling, infer consensus peaks and calculate features
 To run all steps together you can use the following command:
 ```shell
-nextflow run main.nf --CallPeaks --InferConsensus --sample_table ./examples/sample_table.csv --celltypes examples/celltype_annotation.csv
+nextflow run main.nf --callPeaks --inferConsensus --sample_table ./examples/sample_table.csv --celltypes examples/celltype_annotation.csv
 ```

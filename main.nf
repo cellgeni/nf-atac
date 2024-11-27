@@ -16,18 +16,18 @@ def helpMessage() {
         options:
             --sample_table      specify a path to .csv file with sample names and path to the CellRanger-arc output dir (see example below)
             --celltypes         specify a path .csv file with celltype annotation or a path to pseudobulk_peaks.csv file with selected celltypes for consensus peak calling
-            --CallPeaks         if specified creates pseudobulks for celltypes specified in `--celltypes` for samples in `--sample_table`
-            --InferConsensus    if specified runs a consensus peak calling and outputs cisTopic object for each sample in `--sample_table`
+            --callPeaks         if specified creates pseudobulks for celltypes specified in `--celltypes` for samples in `--sample_table`
+            --inferConsensus    if specified runs a consensus peak calling and outputs cisTopic object for each sample in `--sample_table`
 
     Examples:
         1. Perform peak calling
-            nextflow run main.nf --CallPeaks --sample_table ./examples/sample_table.csv --celltypes ./examples/celltype_annotation.csv
+            nextflow run main.nf --callPeaks --sample_table ./examples/sample_table.csv --celltypes ./examples/celltype_annotation.csv
         
         2. Infer consensus peaks and calculate features
-            nextflow run main.nf --InferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
+            nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
         
         3. Perform peak calling, infer consensus peaks and calculate features
-            nextflow run main.nf --CallPeaks --InferConsensus --sample_table ./examples/sample_table.csv --celltypes examples/celltype_annotation.csv
+            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./examples/sample_table.csv --celltypes examples/celltype_annotation.csv
 
     == samples.csv format ==
     sample_id,outputdir
@@ -60,7 +60,7 @@ workflow {
     sample_table = file( params.sample_table )
 
     // Load celltype annotation file
-    celltype_annotation = file( params.celltypes )
+    celltypes = file( params.celltypes )
 
     // Load other files required for cisTopic pipeline
     chromsizes = file( params.chromsizes )
@@ -70,11 +70,12 @@ workflow {
     // Run PyCistopic pipeline
     PYCISTOPIC(
         sample_table,
-        celltype_annotation,
+        celltypes,
         chromsizes,
         blacklist,
         tss_bed,
-        params.fromPseudobulk
+        params.callPeaks,
+        params.inferConsensus
     )
 
     // PYCISTOPIC.out.bed.view()
@@ -83,6 +84,7 @@ workflow {
 
 output {
     'narrowPeaks' {
+        mode 'copy'
         index {
             path '../pseudobulk_peaks.csv'
             header true

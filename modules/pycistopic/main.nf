@@ -135,11 +135,11 @@ process InferConsensus {
 process QualityControl {
     tag "Running QC for sample $sample_id"
     input:
-        tuple val(sample_id), path(fragments), path(fragments_index), path(barcode_metrics)
+        tuple val(sample_id), path(fragments), path(fragments_index), val(fragments_num)
         path(consensus)
         path(tss_bed)
     output:
-        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path("qc/")
+        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path("qc/"), val(fragments_num)
     script:
         """
         mkdir qc
@@ -156,7 +156,7 @@ process QualityControl {
 process CreateCisTopicObject {
     tag "Creating cisTopic object for sample ${sample_id}"
     input:
-        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path(qc)
+        tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path(qc), val(fragments_num)
         path(blacklist)
     output:
         tuple val(sample_id),path("*.pkl")
