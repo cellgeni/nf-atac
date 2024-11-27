@@ -89,8 +89,12 @@ def init_parser() -> argparse.ArgumentParser:
 
 def make_bedpath_dict(bed_path: str) -> Dict[str, str]:
     """
-    Creates the Dict[celltype, path].
-    bed_path (str): path to the fragments file
+    Creates the Dict[celltype, path] with paths to bed files
+    Args:
+        bed_path (str): path to the fragments file
+
+    Returns:
+        Dict[str, str]: paths to bed files for each celltype
     """
     # remove suffix in filename
     celltype = bed_path.replace(".fragments.tsv.gz", "")
