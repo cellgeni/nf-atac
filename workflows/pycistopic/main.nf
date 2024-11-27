@@ -30,7 +30,7 @@ workflow PEAKCALLING {
                                  .collect(flat: false)
                                  .transpose()
                                  .toList()
-                                        
+  
 
         // Split celltypes and filter sample table from duplicates
         SplitCellTypeAnnotation(barcode_metrics, celltype_annotation, sample_table)
@@ -56,13 +56,18 @@ workflow PEAKCALLING {
                                            .collect(flat: false)
                                            .transpose()
                                            .toList()
+        // Make pseudobulk for each sample
+        MakePseudobulk(
+            fragments,
+            celltypes,
+            SplitCellTypeAnnotation.out.fragments_celltype_x_sample,
+            chromsizes
+        )
 
-        // // Make pseudobulk for each sample
-        MakePseudobulk(fragments, celltypes, chromsizes)
-
-        // // Perform peak calling for pseudobulks and collect all files
+        // Perform peak calling for pseudobulks and collect all files
         narrow_peaks = PeakCalling(MakePseudobulk.out.pseudobulk_fragments)
-        narrow_peaks = narrow_peaks.collect()
+    publish:
+        narrow_peaks >> 'narrowPeaks'
     emit:
         narrow_peaks = narrow_peaks
         sample_table = SplitCellTypeAnnotation.out.sample_table
