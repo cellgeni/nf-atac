@@ -14,21 +14,32 @@ def helpMessage() {
     This pipeline performs peak calling for ATAC data (only cisTopic option is available at the moment)
     Usage: nextflow run main.nf [OPTIONS]
         options:
-            --sample_table      specify a .csv file with sample names and path to the CellRanger-arc output dir (see example below)
-            --celltypes         specify a .csv file with celltype annotation (must include 'sample_id', 'barcode' and 'celltype' colums)
-            --cisTopicObject    if specified the script creates cisTopicObject for each sample (otherwise only `.bed` files with consensus peaks are available)
+            --sample_table      specify a path to .csv file with sample names and path to the CellRanger-arc output dir (see example below)
+            --celltypes         specify a path .csv file with celltype annotation or a path to pseudobulk_peaks.csv file with selected celltypes for consensus peak calling
+            --CallPeaks         if specified creates pseudobulks for celltypes specified in `--celltypes` for samples in `--sample_table`
+            --InferConsensus    if specified runs a consensus peak calling and outputs cisTopic object for each sample in `--sample_table`
 
     Examples:
         1. Perform peak calling
-            nextflow run main.nf --sample_table ./examples/samples.csv --celltypes examples/celltypes.csv
+            nextflow run main.nf --CallPeaks --sample_table ./examples/sample_table.csv --celltypes ./examples/celltype_annotation.csv
         
-        2. Perform peak calling and additionally create a cisTopic object
-            nextflow run main.nf --sample_table ./examples/samples.csv --celltypes examples/celltypes.csv --cisTopicObject
+        2. Infer consensus peaks and calculate features
+            nextflow run main.nf --InferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
+        
+        3. Perform peak calling, infer consensus peaks and calculate features
+            nextflow run main.nf --CallPeaks --InferConsensus --sample_table ./examples/sample_table.csv --celltypes examples/celltype_annotation.csv
 
     == samples.csv format ==
     sample_id,outputdir
     WS_wEMB13386884,/lustre/path/to/cellranger-arc/output/
     WS_wEMB13386881,/lustre/path/to/cellranger-arc/output/
+
+    == celltypes.csv format ==
+    sample_id,barcode,celltype
+    WS_wEMB13386884,AGAAGGTGTAATTAGC-1,vasculature
+    WS_wEMB13386884,GATCGAGCACTTCATC-1,fibroblasts
+    WS_wEMB13386881,ACAACATGTGATCAGC-1,vasculature
+    WS_wEMB13386881,GAGCGGTCATGGAGGC-1,fibroblasts
     ========================
     """.stripIndent()
 }
@@ -63,8 +74,7 @@ workflow {
         chromsizes,
         blacklist,
         tss_bed,
-        params.fromPseudobulk,
-        params.cisTopicObject
+        params.fromPseudobulk
     )
 
     // PYCISTOPIC.out.bed.view()
