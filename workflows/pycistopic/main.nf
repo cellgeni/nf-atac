@@ -1,6 +1,7 @@
 include { SplitCellTypeAnnotation } from '../../modules/pycistopic/main'
 include { MakePseudobulk } from '../../modules/pycistopic/main'
 include { PeakCalling } from '../../modules/pycistopic/main'
+include { CollectPeakMetadata } from '../../modules/pycistopic/main'
 include { InferConsensus } from '../../modules/pycistopic/main'
 include { QualityControl } from '../../modules/pycistopic/main'
 include { CreateCisTopicObject } from '../../modules/pycistopic/main'
@@ -62,9 +63,12 @@ workflow PEAKCALLING {
         )
 
         // Perform peak calling for pseudobulks and collect all files
-        narrow_peaks = PeakCalling(MakePseudobulk.out.pseudobulk_fragments)
-    publish:
-        narrow_peaks >> 'narrowPeaks'
+        narrow_peaks = PeakCalling(MakePseudobulk.out.pseudobulk_fragments).collect(flat: false)
+        narrow_peaks_list = narrow_peaks.transpose().toList()
+
+        CollectPeakMetadata(narrow_peaks_list)
+        CollectPeakMetadata.out.metadata.view()
+        CollectPeakMetadata.out.narrow_peaks.view()
     emit:
         narrow_peaks = narrow_peaks
         sample_table = SplitCellTypeAnnotation.out.sample_table

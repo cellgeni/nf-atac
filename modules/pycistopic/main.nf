@@ -94,19 +94,39 @@ process PeakCalling {
     input:
         tuple path(pseudobulk_fragments), val(celltype_name), val(fragments_num)
     output:
-        tuple val(celltype_name), val(fragments_num), env(large_peaks_num), env(all_peaks_num), path('*.narrowPeak')
+        tuple val(celltype_name), val(fragments_num), env(large_peaks_num), env(all_peaks_num), path("$params.narrowPeaks_dir/*.narrowPeak")
     script:
         """
         # perform peak calling
         peak_calling.py \\
                 --bed_path $pseudobulk_fragments \\
-                --output_dir \$PWD \\
+                --output_dir $params.narrowPeaks_dir \\
                 --cpus $task.cpus \\
                 --skip_empty_peaks
         
         # count peaks
-        large_peaks_num=\$(cut -f4 *.narrowPeak | sed 's/[a-z]\$//' | sort -u | wc -l)
-        all_peaks_num=\$(wc -l < *.narrowPeak)
+        large_peaks_num=\$(cut -f4 $params.narrowPeaks_dir/*.narrowPeak | sed 's/[a-z]\$//' | sort -u | wc -l)
+        all_peaks_num=\$(wc -l < $params.narrowPeaks_dir/*.narrowPeak)
+        """
+}
+
+// Make a csv table with 
+process CollectPeakMetadata {
+    input:
+        tuple val(celltype_names), val(fragment_counts), val(large_peak_counts), val(all_peak_counts), path(narrowPeaks, stageAs: "$params.narrowPeaks_dir/*")
+    output:
+        path('pseudobulk_peaks.tsv'), emit: metadata
+        path(narrowPeaks), emit: narrow_peaks
+    script:
+        """
+        collect_peak_info.py \\
+                --publish_dir ${launchDir}/${params.output_dir} \\
+                --celltype_names ${celltype_names.join(' ')} \\
+                --fragment_counts ${fragment_counts.join(' ')} \\
+                --large_peak_counts ${large_peak_counts.join(' ')} \\
+                --all_peak_counts ${all_peak_counts.join(' ')} \\
+                --narrowPeaks ${narrowPeaks.join(' ')} \\
+                --output pseudobulk_peaks.tsv
         """
 }
 

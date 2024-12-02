@@ -1,6 +1,6 @@
 // NEXTFLOW FLAGS
 nextflow.enable.dsl=2
-nextflow.preview.output=true
+
 
 // IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
@@ -21,13 +21,13 @@ def helpMessage() {
 
     Examples:
         1. Perform peak calling
-            nextflow run main.nf --callPeaks --sample_table ./examples/sample_table.csv --celltypes ./examples/celltype_annotation.csv
+            nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltype_annotation.csv
         
         2. Infer consensus peaks and calculate features
             nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
         
         3. Perform peak calling, infer consensus peaks and calculate features
-            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./examples/sample_table.csv --celltypes examples/celltype_annotation.csv
+            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes example/celltype_annotation.csv
 
     == samples.csv format ==
     sample_id,outputdir
@@ -77,26 +77,4 @@ workflow {
         params.callPeaks,
         params.inferConsensus
     )
-
-    // PYCISTOPIC.out.bed.view()
-    // PYCISTOPIC.out.bigwig.view()
-}
-
-output {
-    'narrowPeaks' {
-        mode 'copy'
-        index {
-            path '../pseudobulk_peaks.csv'
-            header true
-            mapper { celltype_name, fragments_num, large_peaks_num, all_peaks_num, narrow_peaks -> 
-            [
-                celltype: celltype_name,
-                fragments: fragments_num,
-                large_peaks: large_peaks_num,
-                all_peaks: all_peaks_num,
-                path: narrow_peaks
-            ]
-            }
-        }
-    }
 }
