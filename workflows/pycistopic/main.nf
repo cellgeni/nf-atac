@@ -63,40 +63,38 @@ workflow PEAKCALLING {
         )
 
         // Perform peak calling for pseudobulks and collect all files
-        narrow_peaks = PeakCalling(MakePseudobulk.out.pseudobulk_fragments).collect(flat: false)
-        narrow_peaks_list = narrow_peaks.transpose().toList()
+        PeakCalling(MakePseudobulk.out.pseudobulk_fragments)
+        narrow_peaks_list = PeakCalling.out.collect(flat: false).transpose().toList()
 
         CollectPeakMetadata(narrow_peaks_list)
-        CollectPeakMetadata.out.metadata.view()
-        CollectPeakMetadata.out.narrow_peaks.view()
     emit:
-        narrow_peaks = narrow_peaks
         sample_table = SplitCellTypeAnnotation.out.sample_table
+        peak_metadata = CollectPeakMetadata.out.metadata
 }
 
 
 workflow INFERPEAKS {
     take:
-        narrow_peaks
+        peak_metadata
         sample_table
         chromsizes
         blacklist
         tss_bed
     main:
         // Get fragment paths from sample table
-        fragments = Channel.fromPath(sample_table, checkIfExists: true)
-                            .splitCsv(skip: 1)
-                            .map{ sample_id, cellranger_arc_output, fragments_num -> 
-                            [
-                                sample_id,
-                                file( "${cellranger_arc_output}/${params.fragments_filename}" ),
-                                file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
-                                fragments_num
-                            ]
-                            }
+        fragments = sample_table.splitCsv(skip: 1)
+                                .map{ sample_id, cellranger_arc_output, fragments_num -> 
+                                [
+                                    sample_id,
+                                    file( "${cellranger_arc_output}/${params.fragments_filename}" ),
+                                    file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
+                                    fragments_num
+                                ]
+                                }
 
         // Get .narrowPeak paths
-        narrow_peak_paths = narrow_peaks.map{ celltype, fragments, large_peaks, all_peaks, path -> path}
+        narrow_peaks = peak_metadata.splitCsv(skip:1, sep:'\t')
+        narrow_peak_paths = narrow_peaks.map{ celltype, fragments, large_peaks, all_peaks, path -> path}.collect()
 
         // Get consensus peaks
         consensus = InferConsensus(narrow_peak_paths, chromsizes, blacklist).bed.collect()
@@ -127,15 +125,16 @@ workflow  PYCISTOPIC {
                 chromsizes
             )
             // get pseudobulk peaks and updated sample table
-            pseudobulk_peaks = PEAKCALLING.out.narrow_peaks
+            peak_metadata = PEAKCALLING.out.peak_metadata
             sample_table = PEAKCALLING.out.sample_table
         } else {
-            narrow_peaks = Channel.fromPath(celltypes, checkIfExists: true).splitCsv()
+            sample_table = Channel.fromPath(sample_table, checkIfExists: true)
+            peak_metadata = Channel.fromPath(celltypes, checkIfExists: true)
         }
 
         if ( inferConsensusFlag ) {
             INFERPEAKS(
-                narrow_peaks,
+                peak_metadata,
                 sample_table,
                 chromsizes,
                 blacklist,
