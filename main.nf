@@ -75,8 +75,8 @@ workflow {
         blacklist,
         tss_bed,
         params.callPeaks,
-        params.inferConsensus
-        params.fragments_filename
+        params.inferConsensus,
+        params.fragments_filename,
         params.barcode_metrics_filename
     )
 }
