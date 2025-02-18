@@ -14,6 +14,7 @@ workflow PEAKCALLING {
         chromsizes
         fragments_filename
         barcode_metrics_filename
+        narrowPeaks_dir
     main:
         // Get barcode metrics and convert channel to list:
         // 1) Get barcode metrics paths from sample table
@@ -65,13 +66,13 @@ workflow PEAKCALLING {
         )
 
         // Perform peak calling for pseudobulks and collect all files
-        PeakCalling(MakePseudobulk.out.pseudobulk_fragments)
+        PeakCalling(MakePseudobulk.out.pseudobulk_fragments, narrowPeaks_dir)
         narrow_peaks_list = PeakCalling.out.collect(flat: false).transpose().toList()
 
-        CollectPeakMetadata(narrow_peaks_list)
+        CollectPeakMetadata(narrow_peaks_list, narrowPeaks_dir)
     emit:
         sample_table = SplitCellTypeAnnotation.out.sample_table
-        peak_metadata = CollectPeakMetadata.out.metadata
+        peak_metadata = PeakCalling.out
 }
 
 
@@ -96,8 +97,7 @@ workflow INFERPEAKS {
                                 }
 
         // Get .narrowPeak paths
-        narrow_peaks = peak_metadata.splitCsv(skip:1, sep:'\t')
-        narrow_peak_paths = narrow_peaks.map{ _celltype, _fragments, _large_peaks, _all_peaks, path -> path}.collect()
+        narrow_peak_paths = peak_metadata.map{ _celltype, _fragments, _large_peaks, _all_peaks, path -> path}.collect()
 
         // Get consensus peaks
         consensus = InferConsensus(narrow_peak_paths, chromsizes, blacklist).bed.collect()
@@ -138,7 +138,7 @@ workflow  PYCISTOPIC {
             sample_table = PEAKCALLING.out.sample_table
         } else {
             sample_table = Channel.fromPath(sample_table, checkIfExists: true)
-            peak_metadata = Channel.fromPath(celltypes, checkIfExists: true)
+            peak_metadata = Channel.fromPath(celltypes, checkIfExists: true).splitCsv(skip:1, sep:'\t')
         }
 
         if ( inferConsensusFlag ) {
