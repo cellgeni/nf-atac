@@ -113,8 +113,9 @@ process PeakCalling {
 
 // Make a csv table with 
 process CollectPeakMetadata {
+    tag "Collecting metadata for pseudobulk peaks"
     input:
-        tuple val(celltype_names), val(fragment_counts), val(large_peak_counts), val(all_peak_counts), path(narrowPeaks, stageAs: "$narrowPeaks_dir/*")
+        tuple val(celltype_names), val(fragment_counts), val(large_peak_counts), val(all_peak_counts), path(narrowPeaks)
         val(narrowPeaks_dir)
     output:
         path('pseudobulk_peaks.tsv'), emit: metadata
@@ -122,7 +123,7 @@ process CollectPeakMetadata {
     script:
         """
         collect_peak_info.py \\
-                --publish_dir ${task.publishDir.path} \\
+                --publish_dir "${task.publishDir.path[0]}/${narrowPeaks_dir}" \\
                 --celltype_names ${celltype_names.join(' ')} \\
                 --fragment_counts ${fragment_counts.join(' ')} \\
                 --large_peak_counts ${large_peak_counts.join(' ')} \\
