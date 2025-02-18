@@ -18,8 +18,8 @@ workflow PEAKCALLING {
         // Get barcode metrics and convert channel to list:
         // 1) Get barcode metrics paths from sample table
         // 2) Collect everything to List with elements [sample_id, barcode_metrics_path]
-        // 3) Transpose List -> Channel(sample_id_list, barcode_metrics_path_list)
-        // 4) Convert Channel ->  List[sample_id_list, barcode_metrics_path_list]
+        // 3) Transpose List -> Channel(List[sample_id], List[barcode_metrics_path])
+        // 4) Convert Channel ->  List(List[sample_id], List[barcode_metrics_path])
         barcode_metrics = Channel.fromPath(sample_table, checkIfExists: true)
                                  .splitCsv(skip: 1)
                                  .map{ sample_id, cellranger_arc_output -> 
@@ -127,8 +127,8 @@ workflow  PYCISTOPIC {
             PEAKCALLING(
                 sample_table,
                 celltypes,
-                chromsizes
-                fragments_filename
+                chromsizes,
+                fragments_filename,
                 barcode_metrics_filename
             )
             // get pseudobulk peaks and updated sample table
@@ -145,7 +145,7 @@ workflow  PYCISTOPIC {
                 sample_table,
                 chromsizes,
                 blacklist,
-                tss_bed
+                tss_bed,
                 fragments_filename
             )
         }
