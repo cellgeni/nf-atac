@@ -277,7 +277,7 @@ def read_celltype_annotation(
         DataFrame: celltype annotation
     """
     # read chromsizes file
-    celltype_name = filepath.replace(".csv", "").replace("_", " ")
+    celltype_name = filepath.replace(".csv", "")
     celltypes = read_csv(filepath)
     # check if all samples are present in annotation
     check_missing_samples(celltypes, sample_list, sample_id_col, celltype_name)
