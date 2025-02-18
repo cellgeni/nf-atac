@@ -19,7 +19,7 @@ def MakePseudobulkErrorHandler(exitStatus, celltypes) {
 }
 
 // function to predict a memory consumption for MakePseudobulk process
-def MakePseudobulkMemory(fragments_num, attempt) {
+def CalculatePseudobulkMemory(fragments_num, attempt) {
     def a = 2.3e-7
     def b = 32
     def x = fragments_num.toDouble()
