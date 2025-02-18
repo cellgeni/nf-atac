@@ -183,7 +183,7 @@ process CreatePythonObject {
         path(blacklist)
     output:
         tuple val(sample_id), path("*.pkl"), path("*.h5ad")
-        script:
+    script:
         """
         create_cistopic.py \\
             --sample_id $sample_id \\
@@ -194,4 +194,23 @@ process CreatePythonObject {
             --cpus $task.cpus \\
             --use_automatic_thresholds
         """
+}
+
+
+process CombinePythonObject {
+    tag "Combining Python Objects"
+    input:
+        tuple val(sample_id), path(cistopic, stageAs: "cistopic/*.pkl"), path(anndata, stageAs: "anndata/*.h5ad")
+    output:
+        tuple path("combined_cistopic_object.pkl"), path("combined.h5ad")
+    script:
+        """
+        combine_objects.py \\
+            --cistopic $cistopic \\
+            --anndata $anndata \\
+            --combined_cistopic combined_cistopic_object.pkl \\
+            --combined_h5ad combined.h5ad \\
+            --output_dir .
+        """
+
 }
