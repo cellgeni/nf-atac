@@ -3,6 +3,7 @@
 import os
 import pickle
 import argparse
+import anndata as ad
 from typing import List
 from numpy import ndarray
 from pandas import DataFrame, read_parquet
@@ -138,6 +139,17 @@ def main():
     # save to pickle file
     with open(f"{args.sample_id}_cistopic_obj.pkl", "wb") as file:
         pickle.dump(cistopic_obj, file)
+
+    # create anndata object
+    adata = ad.AnnData(
+        X=cistopic_obj.fragment_matrix.T,
+        obs=cistopic_obj.cell_data.infer_objects(),
+        var=cistopic_obj.region_data.infer_objects(),
+        layers={"binary": cistopic_obj.binary_matrix.T},
+    )
+
+    # save to h5ad file
+    adata.write_h5ad(f"{args.sample_id}.h5ad")
 
 
 if __name__ == "__main__":

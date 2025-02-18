@@ -4,7 +4,7 @@ include { PeakCalling } from '../../modules/pycistopic/main'
 include { CollectPeakMetadata } from '../../modules/pycistopic/main'
 include { InferConsensus } from '../../modules/pycistopic/main'
 include { QualityControl } from '../../modules/pycistopic/main'
-include { CreateCisTopicObject } from '../../modules/pycistopic/main'
+include { CreatePythonObject } from '../../modules/pycistopic/main'
 
 
 workflow PEAKCALLING {
@@ -106,7 +106,7 @@ workflow INFERPEAKS {
         fragments_consensus_qc = QualityControl(fragments, consensus, tss_bed)
 
         // Create cisTopic object
-        CreateCisTopicObject(fragments_consensus_qc, blacklist)
+        CreatePythonObject(fragments_consensus_qc, blacklist)
 }
 
 

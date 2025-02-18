@@ -176,13 +176,13 @@ process QualityControl {
 }
 
 
-process CreateCisTopicObject {
+process CreatePythonObject {
     tag "Creating cisTopic object for sample ${sample_id}"
     input:
         tuple val(sample_id), path(fragments), path(fragments_index), path(consensus), path(qc), val(fragments_num)
         path(blacklist)
     output:
-        tuple val(sample_id),path("*.pkl")
+        tuple val(sample_id), path("*.pkl"), path("*.h5ad")
         script:
         """
         create_cistopic.py \\
