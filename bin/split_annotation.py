@@ -220,8 +220,8 @@ def filter_nan_entries(celltypes: DataFrame, dropna: bool) -> None:
     Raises:
         DataError: if dropna=False and annotation file contains NaN value
     """
-    nan_etries = celltypes.isna().values.any()
-    if nan_etries:
+    nan_entries = celltypes.isna().values.any()
+    if nan_entries:
         if dropna:
             logging.warning(
                 f"Cell-type annotation file contains NaN values. Removing them..."
@@ -229,6 +229,7 @@ def filter_nan_entries(celltypes: DataFrame, dropna: bool) -> None:
             celltypes.dropna(inplace=True)
         else:
             raise DataError(f"Cell-type annotation file contains NaN values")
+    return celltypes
 
 
 def subsample_celltypes(
@@ -288,9 +289,11 @@ def read_celltype_annotation(
         celltypes.columns, sample_id_col, celltype_col, barcode_col
     )
     # filter NaN entries
-    filter_nan_entries(celltypes, dropna)
+    celltypes_filtered = filter_nan_entries(celltypes, dropna)
     # leave only samples from sample_table
-    celltypes_subsample = subsample_celltypes(celltypes, samples, sample_id_col)
+    celltypes_subsample = subsample_celltypes(
+        celltypes_filtered, samples, sample_id_col
+    )
     return celltypes_subsample
 
 
@@ -413,9 +416,7 @@ def get_fragments_per_sample(
     return fragments_per_sample_df
 
 
-def get_fragments_per_celltype(
-    fragments_celltype_x_sample: DataFrame
-) -> Series:
+def get_fragments_per_celltype(fragments_celltype_x_sample: DataFrame) -> Series:
     """
     Get fragments per celltype from fragments_celltype_x_sample DataFrame
     Args:
@@ -566,7 +567,7 @@ def main():
 
     # save fragment counts
     fragments_celltype_x_sample.to_csv(args.fragments_celltype_x_sample)
-    fragments_per_celltype.index = fragments_per_celltype.index.str.replace(' ', '_')
+    fragments_per_celltype.index = fragments_per_celltype.index.str.replace(" ", "_")
     fragments_per_celltype.to_csv(args.fragments_per_celltype, header=False)
     updated_sample_table.to_csv(args.updated_sample_table)
 
