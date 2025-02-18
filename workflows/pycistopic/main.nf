@@ -12,6 +12,8 @@ workflow PEAKCALLING {
         sample_table
         celltype_annotation
         chromsizes
+        fragments_filename
+        barcode_metrics_filename
     main:
         // Get barcode metrics and convert channel to list:
         // 1) Get barcode metrics paths from sample table
@@ -23,7 +25,7 @@ workflow PEAKCALLING {
                                  .map{ sample_id, cellranger_arc_output -> 
                                  [
                                     sample_id,
-                                    file( "${cellranger_arc_output}/${params.barcode_metrics_filename}" ),
+                                    file( "${cellranger_arc_output}/${barcode_metrics_filename}" ),
                                  ]}
                                  .collect(flat: false)
                                  .transpose()
@@ -44,11 +46,11 @@ workflow PEAKCALLING {
         fragments = SplitCellTypeAnnotation.out
                                            .sample_table
                                            .splitCsv(skip: 1)
-                                           .map{ sample_id, cellranger_arc_output, fragment_counts -> 
+                                           .map{ sample_id, cellranger_arc_output, _fragment_counts -> 
                                            [
                                                 sample_id,
-                                                file( "${cellranger_arc_output}/${params.fragments_filename}" ),
-                                                file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" )
+                                                file( "${cellranger_arc_output}/${fragments_filename}" ),
+                                                file( "${cellranger_arc_output}/${fragments_filename}.tbi" )
                                            ]
                                            }
                                            .collect(flat: false)
@@ -80,21 +82,22 @@ workflow INFERPEAKS {
         chromsizes
         blacklist
         tss_bed
+        fragments_filename
     main:
         // Get fragment paths from sample table
         fragments = sample_table.splitCsv(skip: 1)
                                 .map{ sample_id, cellranger_arc_output, fragments_num -> 
                                 [
                                     sample_id,
-                                    file( "${cellranger_arc_output}/${params.fragments_filename}" ),
-                                    file( "${cellranger_arc_output}/${params.fragments_filename}.tbi" ),
+                                    file( "${cellranger_arc_output}/${fragments_filename}" ),
+                                    file( "${cellranger_arc_output}/${fragments_filename}.tbi" ),
                                     fragments_num
                                 ]
                                 }
 
         // Get .narrowPeak paths
         narrow_peaks = peak_metadata.splitCsv(skip:1, sep:'\t')
-        narrow_peak_paths = narrow_peaks.map{ celltype, fragments, large_peaks, all_peaks, path -> path}.collect()
+        narrow_peak_paths = narrow_peaks.map{ _celltype, _fragments, _large_peaks, _all_peaks, path -> path}.collect()
 
         // Get consensus peaks
         consensus = InferConsensus(narrow_peak_paths, chromsizes, blacklist).bed.collect()
@@ -116,6 +119,8 @@ workflow  PYCISTOPIC {
         tss_bed
         callPeaksFlag
         inferConsensusFlag
+        fragments_filename
+        barcode_metrics_filename
     main:
         // Create pseudobulk, call peaks and update sample table
         if ( callPeaksFlag ) {
@@ -123,6 +128,8 @@ workflow  PYCISTOPIC {
                 sample_table,
                 celltypes,
                 chromsizes
+                fragments_filename
+                barcode_metrics_filename
             )
             // get pseudobulk peaks and updated sample table
             peak_metadata = PEAKCALLING.out.peak_metadata
@@ -139,6 +146,7 @@ workflow  PYCISTOPIC {
                 chromsizes,
                 blacklist,
                 tss_bed
+                fragments_filename
             )
         }
 }
