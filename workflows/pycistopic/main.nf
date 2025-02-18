@@ -121,6 +121,7 @@ workflow  PYCISTOPIC {
         inferConsensusFlag
         fragments_filename
         barcode_metrics_filename
+        narrowPeaks_dir
     main:
         // Create pseudobulk, call peaks and update sample table
         if ( callPeaksFlag ) {
@@ -129,7 +130,8 @@ workflow  PYCISTOPIC {
                 celltypes,
                 chromsizes,
                 fragments_filename,
-                barcode_metrics_filename
+                barcode_metrics_filename,
+                narrowPeaks_dir
             )
             // get pseudobulk peaks and updated sample table
             peak_metadata = PEAKCALLING.out.peak_metadata

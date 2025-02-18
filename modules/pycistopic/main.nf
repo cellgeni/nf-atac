@@ -93,34 +93,36 @@ process PeakCalling {
     tag "Performing peak calling for ${celltype_name}"
     input:
         tuple path(pseudobulk_fragments), val(celltype_name), val(fragments_num)
+        val(narrowPeaks_dir)
     output:
-        tuple val(celltype_name), val(fragments_num), env(large_peaks_num), env(all_peaks_num), path("$params.narrowPeaks_dir/*.narrowPeak")
+        tuple val(celltype_name), val(fragments_num), env(large_peaks_num), env(all_peaks_num), path("$narrowPeaks_dir/*.narrowPeak")
     script:
         """
         # perform peak calling
         peak_calling.py \\
                 --bed_path $pseudobulk_fragments \\
-                --output_dir $params.narrowPeaks_dir \\
+                --output_dir $narrowPeaks_dir \\
                 --cpus $task.cpus \\
                 --skip_empty_peaks
         
         # count peaks
-        large_peaks_num=\$(cut -f4 $params.narrowPeaks_dir/*.narrowPeak | sed 's/[a-z]\$//' | sort -u | wc -l)
-        all_peaks_num=\$(wc -l < $params.narrowPeaks_dir/*.narrowPeak)
+        large_peaks_num=\$(cut -f4 $narrowPeaks_dir/*.narrowPeak | sed 's/[a-z]\$//' | sort -u | wc -l)
+        all_peaks_num=\$(wc -l < $narrowPeaks_dir/*.narrowPeak)
         """
 }
 
 // Make a csv table with 
 process CollectPeakMetadata {
     input:
-        tuple val(celltype_names), val(fragment_counts), val(large_peak_counts), val(all_peak_counts), path(narrowPeaks, stageAs: "$params.narrowPeaks_dir/*")
+        tuple val(celltype_names), val(fragment_counts), val(large_peak_counts), val(all_peak_counts), path(narrowPeaks, stageAs: "$narrowPeaks_dir/*")
+        val(narrowPeaks_dir)
     output:
         path('pseudobulk_peaks.tsv'), emit: metadata
         path(narrowPeaks), emit: narrow_peaks
     script:
         """
         collect_peak_info.py \\
-                --publish_dir ${launchDir}/${params.output_dir} \\
+                --publish_dir ${task.publishDir.path} \\
                 --celltype_names ${celltype_names.join(' ')} \\
                 --fragment_counts ${fragment_counts.join(' ')} \\
                 --large_peak_counts ${large_peak_counts.join(' ')} \\
