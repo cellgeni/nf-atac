@@ -210,6 +210,22 @@ def validate_celltype_columns(
         )
 
 
+def format_celltype_column(celltypes: DataFrame, celltype_col: str) -> DataFrame:
+    """
+    Format celltype column in celltype DataFrame
+    Args:
+        celltypes (DataFrame): a DataFrame with celltype annotation
+        celltype_col (str): a name for celltype column in annotation file
+
+    Returns:
+        DataFrame: celltype DataFrame with formatted celltype column
+    """
+    celltypes[celltype_col] = (
+        celltypes[celltype_col].str.lower().str.strip().str.replace(" ", "_")
+    )
+    return celltypes
+
+
 def filter_nan_entries(celltypes: DataFrame, dropna: bool) -> None:
     """
     Filters NaN values in celltypes DataFrame for sample_id
@@ -288,8 +304,10 @@ def read_celltype_annotation(
     validate_celltype_columns(
         celltypes.columns, sample_id_col, celltype_col, barcode_col
     )
+    # format celltype column
+    celltypes_formated = format_celltype_column(celltypes, celltype_col)
     # filter NaN entries
-    celltypes_filtered = filter_nan_entries(celltypes, dropna)
+    celltypes_filtered = filter_nan_entries(celltypes_formated, dropna)
     # leave only samples from sample_table
     celltypes_subsample = subsample_celltypes(
         celltypes_filtered, samples, sample_id_col
