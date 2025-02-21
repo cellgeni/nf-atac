@@ -24,7 +24,7 @@ def helpMessage() {
             nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
         
         2. Infer consensus peaks and calculate features
-            nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.tsv
+            nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./example/pseudobulk_peaks.tsv
         
         3. Perform peak calling, infer consensus peaks and calculate features
             nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes example/celltypes.csv

@@ -23,10 +23,10 @@ This pipeline performs peak calling for ATAC data (only cisTopic option is avail
 
 ## Examples of use:
 ### 1. Perform peak calling
-To run peak calling for each celltype you need to specify *sample table* (see `examples/sample_table.csv`) and *celltype annotation* (see `examples/celltype_annotation.csv`):
+To run peak calling for each celltype you need to specify *sample table* (see `example/sample_table.csv`) and *celltype annotation* (see `example/celltype_annotation.csv`):
 
 ```shell
-nextflow run main.nf --callPeaks --sample_table ./examples/sample_table.csv --celltypes ./examples/celltype_annotation.csv
+nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
 ```
 
 This creates `results` directory with the following files:
@@ -47,7 +47,7 @@ results/
 ### 2. Infer consensus peaks and calculate features
 To run consensus peak calling and feature calculation you need to specify an **updated sample table** generated on previous step (it is essential to use updated table with fragment counts to set appropriate memory limits for jobs) and **pseudobulk peaks table** generated on previous step with selected celltypes:
 ```shell
-nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
+nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./example/pseudobulk_peaks.tsv
 ```
 
 This will create a `consensus_paeks.bed` file and `cisTopic` objects for each sample:
@@ -65,5 +65,5 @@ results
 ### 3. Perform peak calling, infer consensus peaks and calculate features
 To run all steps together you can use the following command:
 ```shell
-nextflow run main.nf --callPeaks --inferConsensus --sample_table ./examples/sample_table.csv --celltypes examples/celltype_annotation.csv
+nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes example/celltypes.csv
 ```
