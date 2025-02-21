@@ -209,7 +209,7 @@ process CombinePythonObject {
             --cistopic $cistopic \\
             --anndata $anndata \\
             --combined_cistopic combined_cistopic_object.pkl \\
-            --combined_h5ad combined.h5ad \\
+            --combined_anndata combined.h5ad \\
             --output_dir .
         """
 
