@@ -108,10 +108,16 @@ workflow INFERPEAKS {
 
         // Create cisTopic object
         CreatePythonObject(fragments_consensus_qc, blacklist)
-        objects = CreatePythonObject.out.toList().filter{ it -> it.size() > 1 }.transpose().toList()
+        CreatePythonObject.out.toList()
+                           .branch {
+                                it ->
+                                combine_objects: it.size() > 1
+                                sample: true
+                           }
+                           .set { objects }
 
         // Combine cisTopic objects
-        CombinePythonObject(objects)
+        CombinePythonObject(objects.combine_objects.transpose().toList())
 }
 
 
