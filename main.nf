@@ -21,13 +21,13 @@ def helpMessage() {
 
     Examples:
         1. Perform peak calling
-            nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltype_annotation.csv
+            nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
         
         2. Infer consensus peaks and calculate features
-            nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.csv
+            nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./results/pseudobulk_peaks.tsv
         
         3. Perform peak calling, infer consensus peaks and calculate features
-            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes example/celltype_annotation.csv
+            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes example/celltypes.csv
 
     == samples.csv format ==
     sample_id,outputdir
