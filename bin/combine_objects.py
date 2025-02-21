@@ -5,7 +5,7 @@ import pickle
 import glob
 import argparse
 import anndata as ad
-from pycisTopic.cistopic_class import merge, CisTopic
+from pycisTopic.cistopic_class import merge, CistopicObject
 
 
 def init_parser() -> argparse.ArgumentParser:
@@ -19,12 +19,14 @@ def init_parser() -> argparse.ArgumentParser:
         "--cistopic",
         metavar="<dir>",
         type=str,
+        nargs="+",
         help="Specify a path to the directory with cistopic objects",
     )
     parser.add_argument(
         "--anndata",
         metavar="<dir>",
         type=str,
+        nargs="+",
         help="Specify a path to the directory with anndata objects",
     )
     parser.add_argument(
@@ -48,7 +50,7 @@ def init_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def read_cistopic_object(file: str) -> CisTopic:
+def read_cistopic_object(file: str) -> CistopicObject:
     """
     Read cistopic object from the file
     """
@@ -58,16 +60,15 @@ def read_cistopic_object(file: str) -> CisTopic:
 
 
 def main():
+    """
+    Main function of the script
+    """
     # parse script arguments
     parser = init_parser()
     args = parser.parse_args()
 
-    # get lists of cistopic and anndata objects
-    cistopic_files = glob.glob(os.path.join(args.cistopic, "*.pkl"))
-    anndata_files = glob.glob(os.path.join(args.anndata, "*.h5ad"))
-
     # combine cistopic objects
-    cistopic_objects = [read_cistopic_object(file) for file in cistopic_files]
+    cistopic_objects = [read_cistopic_object(file) for file in args.cistopic]
     cistopic_combined = merge(cistopic_objects)
 
     # write cistopic object to the file
@@ -79,8 +80,12 @@ def main():
     del cistopic_combined
 
     # combine anndata objects
-    anndata_objects = [ad.read_h5ad(file) for file in anndata_files]
+    anndata_objects = [ad.read_h5ad(file) for file in args.anndata]
     anndata = ad.concat(anndata_objects)
 
     # write anndata object to the file
     anndata.write_h5ad(os.path.join(args.output_dir, args.combined_anndata))
+
+
+if __name__ == "__main__":
+    main()
