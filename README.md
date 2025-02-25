@@ -16,10 +16,10 @@ This pipeline performs peak calling for ATAC data (only cisTopic option is avail
 * `nextflow.config` - the configuration script that controls everything
 
 ## Pipeline Arguments
-* `--sample_table`: specify a path to .csv file with sample names and path to the CellRanger-arc output dir (see example below)
-* `--celltypes`: specify a path .csv file with celltype annotation or a path to pseudobulk_peaks.csv file with selected celltypes for consensus peak calling
-* `--callPeaks`: if specified creates pseudobulks for celltypes specified in `--celltypes` for samples in `--sample_table`
-* `--inferConsensus`: if specified runs a consensus peak calling and outputs cisTopic object for each sample in `--sample_table`
+* `--sample_table`: Path to .csv file with sample names and paths to the CellRanger-arc output directories
+* `--celltypes`: Path to .csv file with celltype annotation or path to pseudobulk_peaks.csv file with selected celltypes for consensus peak calling
+* `--callPeaks`: Run peak calling for provided celltypes (needs --sample_table and --celltypes)
+* `--inferConsensus`: Run consensus peak calling (needs --sample_table and --celltypes)
 
 ## Examples of use:
 ### 1. Perform peak calling
@@ -50,16 +50,20 @@ To run consensus peak calling and feature calculation you need to specify an **u
 nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./example/pseudobulk_peaks.tsv
 ```
 
-This will create a `consensus_paeks.bed` file and `cisTopic` objects for each sample:
+This will create a `consensus_paeks.bed` file, `cisTopic` and `.h5ad` objects for each sample and combined `cisTopic` and `.h5ad` objects for whole dataset:
 ```
 results
 ├── consensus_peaks.bed # consensus peaks
+├── combined_cistopic_object.pkl
+├── combined.h5ad
 ├── WS_wEMB13400228
 │   ├── qc
-│   └── WS_wEMB13400228_cistopic_obj.pkl
+│   ├── WS_wEMB13400228_cistopic_obj.pkl
+│   └── WS_wEMB13400228.h5ad
 └── WS_wEMB13400229
     ├── qc
-    └── WS_wEMB13400229_cistopic_obj.pkl
+    ├── WS_wEMB13400229_cistopic_obj.pkl
+    └── WS_wEMB13400229.h5ad
 ```
 
 ### 3. Perform peak calling, infer consensus peaks and calculate features
