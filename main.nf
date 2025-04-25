@@ -4,6 +4,7 @@ nextflow.enable.dsl=2
 
 // IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
+include { SNAPATAC2 } from './workflows/snapatac2/main'
 
 // HELP MESSAGE
 def helpMessage() {
@@ -79,5 +80,32 @@ workflow {
         params.fragments_filename,
         params.barcode_metrics_filename,
         params.narrowPeaks_dir
+    )
+}
+
+workflow snapatac2 {
+    // Validate input arguments
+    if (params.help) {
+        helpMessage()
+        System.exit(0)
+    } else if (params.sample_table == null || params.celltypes == null) {
+        helpMessage()
+        error "Please specify all of the arguments listed above"
+    }
+    
+    // Convert sample_table to path
+    sample_table = file( params.sample_table )
+
+    // Load celltype annotation file
+    celltypes = file( params.celltypes )
+
+    // Load other files required for cisTopic pipeline
+    /*chromsizes = file( params.chromsizes )
+    blacklist = file( params.blacklist )
+    tss_bed = file( params.tss_bed )*/
+    
+    SNAPATAC2(
+      sample_table,
+      celltypes
     )
 }
