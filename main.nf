@@ -88,24 +88,15 @@ workflow snapatac2 {
     if (params.help) {
         helpMessage()
         System.exit(0)
-    } else if (params.sample_table == null || params.celltypes == null) {
+    } else if (params.sample_table == null) {
         helpMessage()
         error "Please specify all of the arguments listed above"
     }
     
     // Convert sample_table to path
-    sample_table = file( params.sample_table )
-
-    // Load celltype annotation file
-    celltypes = file( params.celltypes )
-
-    // Load other files required for cisTopic pipeline
-    /*chromsizes = file( params.chromsizes )
-    blacklist = file( params.blacklist )
-    tss_bed = file( params.tss_bed )*/
+    sample_table = Channel.fromPath( params.sample_table )
     
     SNAPATAC2(
-      sample_table,
-      celltypes
+      sample_table
     )
 }
