@@ -16,8 +16,7 @@ def init_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--sample_id", 
-        type=str, 
-        metavar="<val>", 
+        type=str,  
         help="Sample identificator",
     )
     parser.add_argument(
@@ -29,28 +28,24 @@ def init_parser() -> argparse.ArgumentParser:
     
     parser.add_argument(
         "--genome",
-        metavar="<file>",
         type=str,
         help="Specify genome to use. One of hg38, hg37, mm10, mm39, GRCh37, GRCh38, GRCm38, GRCm39. GRCh38 is used by default."
     )
     
     parser.add_argument(
         "--min_counts",
-        metavar="<val>",
         type=int,
         help="Minimal numer of fragments per cell",
         default = 5000,
     )
     parser.add_argument(
         "--max_counts",
-        metavar="<val>",
         type=int,
         help="Maximal numer of fragments per cell",
         default = 1000000,
     )
     parser.add_argument(
         "--min_tsse",
-        metavar="<val>",
         type=float,
         help="Threshold for cell TSS enrichment score",
         default = 10,
@@ -58,9 +53,14 @@ def init_parser() -> argparse.ArgumentParser:
     
     parser.add_argument(
         "--n_features",
-        metavar="<val>",
         type=int,
         help="Number of features to use (for doublets)",
+    )
+
+    parser.add_argument(
+        "--remove_doublets",
+        type = bool,
+        help="Whether remove doublets"
     )
     return parser
 
@@ -91,8 +91,12 @@ def main():
     snap.pp.add_tile_matrix(data)
     snap.pp.select_features(data,
                             n_features = args.n_features)
-    snap.pp.scrublet(data)
-    snap.pp.filter_doublets(data)
+    if args.remove_doublets:
+        snap.pp.scrublet(data)
+        snap.pp.filter_doublets(data)
+
+    data.obs['barcode'] = data.obs_names
+    data.obs_names = args.sample_id + ":" + data.obs['barcode']
     
     #gene_matrix = snap.pp.make_gene_matrix(data,genome)
     #gene_matrix.write_h5ad(args.sample_id+"_gene_matrix.h5ad",compression='gzip')

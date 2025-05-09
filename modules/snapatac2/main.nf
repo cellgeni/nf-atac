@@ -4,9 +4,7 @@ def lowMemoryError(sample, task_name) {
     return 'retry'
 }
 
-process per_sample_preprocessing {
-  publishDir "${params.output_dir}/", mode: 'copy'
-  
+process preprocess_sample {
   input:
     tuple val(sample_id), path(fragments)
     val(min_counts)
@@ -14,10 +12,11 @@ process per_sample_preprocessing {
     val(min_tsse)
     val(n_features)
     val(genome)
+    val(remove_doublets)
   
   
   output:
-    tuple val(sample_id), path("${sample_id}.h5ad") //, path("${sample_id}_gene_matrix.h5ad")
+    tuple val(sample_id), path("${sample_id}.h5ad") 
   
   script:
   """
@@ -28,7 +27,8 @@ process per_sample_preprocessing {
    --max_counts $max_counts \
    --min_tsse $min_tsse \
    --n_features $n_features \
-   --genome $genome
+   --genome $genome \
+   --remove_doublets $remove_doublets
   """
 }
 
@@ -36,17 +36,18 @@ process combine_samples {
   publishDir "${params.output_dir}/", mode: 'copy'
   
   input:
-    path(samples)
+    tuple val(sample_id), path(h5ad_in, stageAs: "full_adatas/anndatas/*")
     val(n_features)
     val(genome)
 
   output:
-    tuple path("combined.h5ad"),path("combined_gene_matrix.h5ad")
+    path("full_adatas")
   
   script:
   """
   combine_samples.py \
-   --samples_file $samples \
+   --samples_id $sample_id \
+   --h5ad_in $h5ad_in \
    --n_features $n_features \
    --genome $genome \
    --postprocess
@@ -62,9 +63,7 @@ process call_peaks {
     val(genome)
 
   output:
-    path("*.h5ad")
-    path('subadatas')
-    path('merged_peaks.csv')
+    path('subset_adatas')
   
   script:
   """

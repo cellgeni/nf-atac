@@ -15,22 +15,27 @@ def init_parser() -> argparse.ArgumentParser:
         description="Creates snapATAC2 h5ad from fragments, calculates tsse, doublet score, filter cellby thrs and generates gene score matrix"
     )
     parser.add_argument(
-        "--samples_file", 
+        "--sample_id", 
         type=str, 
-        metavar="<val>", 
-        help="Path to csv file that contains three columns: sample_id, path h5ad, path to gene_matrix h5ad",
+        nargs="+",
+        help="Sample name[s]",
+    )
+    
+    parser.add_argument(
+        "--h5ad_in", 
+        type=str, 
+        nargs="+",
+        help="h5ads path[s]",
     )
     
     parser.add_argument(
         "--genome",
-        metavar="<file>",
         type=str,
         help="Specify genome to use. One of hg38, hg37, mm10, mm39, GRCh37, GRCh38, GRCm38, GRCm39. GRCh38 is used by default.",
     )
     
     parser.add_argument(
         "--n_features",
-        metavar="<val>",
         type=int,
         help="Number of features to use (for doublets)",
     )
@@ -52,24 +57,21 @@ def main():
     
     genome = getattr(snap.genome,args.genome)
     
-    samples = pd.read_csv(args.samples_file,header=None)
+    samples = pd.DataFrame({sample_id : args.sample_id,
+                            h5ad_path : args.h5ad_in})
     
     data = snap.AnnDataSet(
       adatas = [(samples.iloc[i,0],samples.iloc[i,1]) for i in range(samples.shape[0])],
-      filename='combined.h5ad')
-      
-      
-    unique_cell_ids = [sa + ':' + bc for sa, bc in zip(data.obs['sample'], data.obs_names)]
-    data.obs_names = unique_cell_ids
-    snap.pp.select_features(data,n_features=args.n_features)
-    
-    # save and close
+      filename='full_adatas/_dataset.h5ads'
+    )
+
     gene_matrix = snap.pp.make_gene_matrix(data,genome)
-    gene_matrix.write_h5ad("combined_gene_matrix.h5ad",compression='gzip')
+    gene_matrix.write_h5ad("full_adatas/gene_matrix.h5ad",compression='gzip')
     
     
     # optional dim reduction and batch correction
     if(args.postprocess):
+      snap.pp.select_features(data,n_features=args.n_features)
       snap.tl.spectral(data)
       snap.tl.umap(data)
     

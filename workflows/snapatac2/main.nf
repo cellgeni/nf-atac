@@ -1,4 +1,4 @@
-include { per_sample_preprocessing } from '../../modules/snapatac2'
+include { preprocess_sample } from '../../modules/snapatac2'
 include { combine_samples } from '../../modules/snapatac2'
 include { call_peaks } from '../../modules/snapatac2'
 
@@ -9,19 +9,18 @@ workflow  SNAPATAC2 {
     main:
         samples = sample_table.splitCsv(skip: 1)
         
-        per_sample_preprocessing(
+        preprocess_sample(
           samples,
           params.min_counts,
           params.max_counts,
           params.min_tsse,
           params.n_features,
-          params.genome
+          params.genome,
+          params.remove_doublets
         )
         
-        sample_file = per_sample_preprocessing.out.collectFile{item -> ["samples.csv", item[0]  + "," + item[1] + "," + item[2] + "\n"]}
-        
         combine_samples(
-          sample_file,
+          preprocess_sample.out.transpose().toList(),
           params.n_features,
           params.genome
         )
