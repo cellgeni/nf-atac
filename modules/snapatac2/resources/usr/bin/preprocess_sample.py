@@ -84,16 +84,21 @@ def main():
                          min_counts = args.min_counts,
                          min_tsse = args.min_tsse,
                          max_counts = args.max_counts)
+                         
+    if data.shape[0] == 0:
+      raise Exception("There are no cells left in '"+args.sample_id+"', cannot proceed. Consider removing sample from a list.")
+    
     snap.pp.add_tile_matrix(data)
     snap.pp.select_features(data,
                             n_features = args.n_features)
     snap.pp.scrublet(data)
     snap.pp.filter_doublets(data)
     
-    gene_matrix = snap.pp.make_gene_matrix(data,genome)
+    #gene_matrix = snap.pp.make_gene_matrix(data,genome)
+    #gene_matrix.write_h5ad(args.sample_id+"_gene_matrix.h5ad",compression='gzip')
     
     data.close()
-    gene_matrix.write_h5ad(args.sample_id+"_gene_matrix.h5ad",compression='gzip')
+    
 
 
 if __name__ == "__main__":

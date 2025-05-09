@@ -1,6 +1,6 @@
 // function to log error message if there is a memmory shortage
 def lowMemoryError(sample, task_name) {
-    log.warn "The memory is to low to perform ${task_name} for ${sample}"
+    log.warn "The memory is too low to perform ${task_name} for ${sample}"
     return 'retry'
 }
 
@@ -17,7 +17,7 @@ process per_sample_preprocessing {
   
   
   output:
-    tuple val(sample_id), path("${sample_id}.h5ad"), path("${sample_id}_gene_matrix.h5ad")
+    tuple val(sample_id), path("${sample_id}.h5ad") //, path("${sample_id}_gene_matrix.h5ad")
   
   script:
   """
@@ -58,11 +58,13 @@ process call_peaks {
   
   input:
     tuple path(h5ad_file),path(gene_matrix)
-    val(celltype_file)
+    path(celltype_file)
     val(genome)
 
   output:
-    tuple 
+    path("*.h5ad")
+    path('subadatas')
+    path('merged_peaks.csv')
   
   script:
   """

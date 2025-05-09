@@ -43,9 +43,6 @@ def main():
     # parse script arguments
     parser = init_parser()
     args = parser.parse_args()
-    args = parser.parse_args(['--h5ad_file','data.lustre/atac/results/combined.h5ad',
-                              '--celltype_file','celltypes_01.csv',
-                              '--genome','GRCh38'])
     
     genome = getattr(snap.genome,args.genome)
     
@@ -56,13 +53,15 @@ def main():
 
     cmn = list(set(celltypes.index).intersection(set(data.obs_names)))
     
-    data,ord = data.subset(obs_indices=cmn,out='adatas')
+    data,ord = data.subset(obs_indices=cmn,out='subadatas')
     data.obs['celltype'] = celltypes.loc[data.obs_names,:].iloc[:,2]
 
     snap.tl.macs3(data, groupby='celltype', replicate='sample',n_jobs=args.n_jobs)
     merged_peaks = snap.tl.merge_peaks(data.uns['macs3'], chrom_sizes=genome)
     
-    peak_mat = snap.pp.make_peak_matrix(data, use_rep=peaks['Peaks'])
+    peak_mat = snap.pp.make_peak_matrix(data, use_rep=merged_peaks['Peaks'])
+    peak_mat.write_h5ad('peak_mat.h5ad')
+    merged_peaks.write_csv('merged_peaks.csv')
 
     data.close()
     

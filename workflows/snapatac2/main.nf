@@ -1,12 +1,13 @@
 include { per_sample_preprocessing } from '../../modules/snapatac2'
 include { combine_samples } from '../../modules/snapatac2'
+include { call_peaks } from '../../modules/snapatac2'
 
 workflow  SNAPATAC2 {
     take:
         sample_table
 
     main:
-        samples = sample_table.splitCsv()
+        samples = sample_table.splitCsv(skip: 1)
         
         per_sample_preprocessing(
           samples,
@@ -24,4 +25,10 @@ workflow  SNAPATAC2 {
           params.n_features,
           params.genome
         )
+
+        if(params.celltypes != null){
+          call_peaks(combine_samples.out,
+                     Channel.fromPath( params.celltypes ),
+                     params.genome)
+        }
 }
