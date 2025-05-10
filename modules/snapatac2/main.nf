@@ -41,7 +41,7 @@ process combine_samples {
     val(genome)
 
   output:
-    path("full_adatas")
+    tuple path("full.h5ads"),path("full_adatas")
   
   script:
   """
@@ -58,7 +58,7 @@ process call_peaks {
   publishDir "${params.output_dir}/", mode: 'copy'
   
   input:
-    path(full_adatas)
+    tuple path(h5ads),path(full_adatas, stageAs: "full_adatas")
     path(celltype_file)
     val(genome)
 
@@ -68,7 +68,7 @@ process call_peaks {
   script:
   """
   call_peaks.py \
-   --h5ad_file ${full_adatas}/_dataset.h5ads \
+   --h5ad_file $h5ads \
    --celltype_file $celltype_file \
    --genome $genome \
    --n_jobs 10

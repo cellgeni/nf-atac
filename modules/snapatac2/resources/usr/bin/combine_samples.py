@@ -62,7 +62,7 @@ def main():
     
     data = snap.AnnDataSet(
       adatas = [(samples.iloc[i,0],samples.iloc[i,1]) for i in range(samples.shape[0])],
-      filename='full_adatas/_dataset.h5ads'
+      filename='full.h5ads'
     )
 
     gene_matrix = snap.pp.make_gene_matrix(data,genome)
