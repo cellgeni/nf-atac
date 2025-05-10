@@ -24,7 +24,7 @@ workflow  SNAPATAC2 {
           params.n_features,
           params.genome
         )
-
+        
         if(params.celltypes != null){
           call_peaks(combine_samples.out,
                      Channel.fromPath( params.celltypes ),

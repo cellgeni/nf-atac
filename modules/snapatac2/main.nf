@@ -58,7 +58,7 @@ process call_peaks {
   publishDir "${params.output_dir}/", mode: 'copy'
   
   input:
-    tuple path(h5ad_file),path(gene_matrix)
+    path(full_adatas)
     path(celltype_file)
     val(genome)
 
@@ -68,7 +68,7 @@ process call_peaks {
   script:
   """
   call_peaks.py \
-   --h5ad_file $h5ad_file \
+   --h5ad_file ${full_adatas}/_dataset.h5ads \
    --celltype_file $celltype_file \
    --genome $genome \
    --n_jobs 10
