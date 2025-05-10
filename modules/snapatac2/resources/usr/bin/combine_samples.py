@@ -57,8 +57,8 @@ def main():
     
     genome = getattr(snap.genome,args.genome)
     
-    samples = pd.DataFrame({sample_id : args.sample_id,
-                            h5ad_path : args.h5ad_in})
+    samples = pd.DataFrame({'sample_id' : args.sample_id,
+                            'h5ad_path' : args.h5ad_in})
     
     data = snap.AnnDataSet(
       adatas = [(samples.iloc[i,0],samples.iloc[i,1]) for i in range(samples.shape[0])],
