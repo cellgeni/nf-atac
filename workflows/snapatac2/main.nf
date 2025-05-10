@@ -20,7 +20,7 @@ workflow  SNAPATAC2 {
         )
         
         combine_samples(
-          preprocess_sample.out.transpose().toList(),
+          preprocess_sample.out.toList().transpose().toList(),
           params.n_features,
           params.genome
         )

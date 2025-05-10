@@ -46,7 +46,7 @@ process combine_samples {
   script:
   """
   combine_samples.py \
-   --samples_id $sample_id \
+   --sample_id ${sample_id.join(' ')} \
    --h5ad_in $h5ad_in \
    --n_features $n_features \
    --genome $genome \
