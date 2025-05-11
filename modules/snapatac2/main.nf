@@ -33,15 +33,15 @@ process preprocess_sample {
 }
 
 process combine_samples {
-  publishDir "${params.output_dir}/", mode: 'copy'
+  publishDir "${params.output_dir}/full_adatas/", mode: 'copy'
   
   input:
-    tuple val(sample_id), path(h5ad_in, stageAs: "full_adatas/anndatas/*")
+    tuple val(sample_id), path(h5ad_in, stageAs: "anndatas/*")
     val(n_features)
     val(genome)
 
   output:
-    tuple path("full.h5ads"),path("full_adatas")
+    tuple path("full.h5ads"),path("gene_matrix.h5ad"),path("anndatas")
   
   script:
   """
@@ -58,7 +58,7 @@ process call_peaks {
   publishDir "${params.output_dir}/", mode: 'copy'
   
   input:
-    tuple path(h5ads),path(full_adatas, stageAs: "full_adatas")
+    tuple path(h5ads),path(gene_matrix),path(anndatas, stageAs: "anndatas")
     path(celltype_file)
     val(genome)
 

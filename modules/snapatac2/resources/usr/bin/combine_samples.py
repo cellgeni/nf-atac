@@ -66,7 +66,7 @@ def main():
     )
 
     gene_matrix = snap.pp.make_gene_matrix(data,genome)
-    gene_matrix.write_h5ad("full_adatas/gene_matrix.h5ad",compression='gzip')
+    gene_matrix.write_h5ad("gene_matrix.h5ad",compression='gzip')
     
     
     # optional dim reduction and batch correction
