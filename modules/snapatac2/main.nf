@@ -71,6 +71,6 @@ process call_peaks {
    --h5ad_file $h5ads \
    --celltype_file $celltype_file \
    --genome $genome \
-   --n_jobs 10
+   --n_jobs 20
   """
 }
