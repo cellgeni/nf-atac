@@ -29,11 +29,20 @@ def init_parser() -> argparse.ArgumentParser:
         type=str,
         help="Specify genome to use. One of hg38, hg37, mm10, mm39, GRCh37, GRCh38, GRCm38, GRCm39. GRCh38 is used by default."
     )
+
+    parser.add_argument(
+        "--blacklist",
+        type=str,
+        default = None,
+        help="Path to the blacklist file in BED format. If provided, regions in the blacklist will be removed."
+    )
+
     parser.add_argument(
         "--n_jobs",
         type=int,
         help="Number of processes"
     )
+
     return parser
 
 
@@ -54,12 +63,14 @@ def main():
     data,ord = data.subset(obs_indices=cmn,out='subset_adatas')
     data.obs['celltype'] = celltypes.loc[data.obs_names,:].iloc[:,2]
 
-    snap.tl.macs3(data, groupby='celltype', replicate='sample',n_jobs=args.n_jobs)
+    snap.tl.macs3(data, groupby='celltype', replicate='sample',n_jobs=args.n_jobs,blacklist=args.blacklist)
     merged_peaks = snap.tl.merge_peaks(data.uns['macs3'], chrom_sizes=genome)
     
     peak_mat = snap.pp.make_peak_matrix(data, use_rep=merged_peaks['Peaks'])
     peak_mat.write_h5ad('subset_adatas/peak_mat.h5ad')
     merged_peaks.write_csv('subset_adatas/merged_peaks.csv')
+
+    snap.metrics.tsse(data,genome,n_jobs=args.n_jobs)
 
     data.close()
     

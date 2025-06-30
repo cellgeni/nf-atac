@@ -6,7 +6,7 @@ def lowMemoryError(sample, task_name) {
 
 process preprocess_sample {
   input:
-    tuple val(sample_id), path(fragments)
+    tuple val(sample_id), path(fragments), path(fragments_index)
     val(min_counts)
     val(max_counts)
     val(min_tsse)
@@ -61,6 +61,7 @@ process call_peaks {
     tuple path(h5ads),path(gene_matrix),path(anndatas, stageAs: "anndatas")
     path(celltype_file)
     val(genome)
+    path(blacklist)
 
   output:
     path('subset_adatas')
@@ -71,6 +72,7 @@ process call_peaks {
    --h5ad_file $h5ads \
    --celltype_file $celltype_file \
    --genome $genome \
+   --blacklist $blacklist \
    --n_jobs 20
   """
 }

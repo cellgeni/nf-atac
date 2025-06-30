@@ -80,6 +80,8 @@ def main():
     )
     
     snap.metrics.tsse(data,genome)
+    snap.metrics.frag_size_distr(data)
+    
     snap.pp.filter_cells(data,
                          min_counts = args.min_counts,
                          min_tsse = args.min_tsse,

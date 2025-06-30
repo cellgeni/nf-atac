@@ -142,7 +142,7 @@ def validate_sample_table_columns(
     reference_columns = [sample_id_col, filedir_col]
     if reference_columns != sample_table_columns:
         raise InvalidColumnName(
-            "Sample table file must have '{sample_id_col}' and '{filedir_col}' columns"
+            "Sample table file must have '{"+sample_id_col+"}' and '{"+filedir_col+"}' columns"
         )
 
 
@@ -206,7 +206,7 @@ def validate_celltype_columns(
     reference_columns = {sample_id_col, celltype_col, barcode_col}
     if reference_columns.difference(celltype_columns):
         raise InvalidColumnName(
-            "Cell-type annotation file must have '{sample_id_col}', '{celltype_col}' and '{barcode_col}' columns"
+            "Cell-type annotation file must have '{"+sample_id_col+"}', '{"+celltype_col+"}' and '{"+barcode_col+"}' columns"
         )
 
 

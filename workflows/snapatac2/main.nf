@@ -7,7 +7,13 @@ workflow  SNAPATAC2 {
         sample_table
 
     main:
-        samples = sample_table.splitCsv(skip: 1)
+        samples = sample_table.splitCsv(skip: 1).map{ sample_id, cellranger_output -> 
+                                           [
+                                                sample_id,
+                                                file( "${cellranger_output}/${params.fragments_filename}" ),
+                                                file( "${cellranger_output}/${params.fragments_filename}.tbi" )
+                                           ]
+                                           }
         
         preprocess_sample(
           samples,
@@ -28,6 +34,7 @@ workflow  SNAPATAC2 {
         if(params.celltypes != null){
           call_peaks(combine_samples.out,
                      Channel.fromPath( params.celltypes ),
-                     params.genome)
+                     params.genome,
+                     params.blacklist)
         }
 }
