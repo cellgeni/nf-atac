@@ -93,8 +93,9 @@ def main():
     snap.pp.add_tile_matrix(data)
     snap.pp.select_features(data,
                             n_features = args.n_features)
+    snap.pp.scrublet(data)
+    
     if args.remove_doublets:
-        snap.pp.scrublet(data)
         snap.pp.filter_doublets(data)
 
     data.obs['barcode'] = data.obs_names

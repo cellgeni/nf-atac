@@ -5,6 +5,7 @@ nextflow.enable.dsl=2
 // IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
 include { SNAPATAC2 } from './workflows/snapatac2/main'
+include { ARCHR } from './workflows/archr/main'
 
 // HELP MESSAGE
 def helpMessage() {
@@ -97,6 +98,24 @@ workflow snapatac2 {
     sample_table = Channel.fromPath( params.sample_table )
     
     SNAPATAC2(
+      sample_table
+    )
+}
+
+workflow archr {
+    // Validate input arguments
+    if (params.help) {
+        helpMessage()
+        System.exit(0)
+    } else if (params.sample_table == null) {
+        helpMessage()
+        error "Please specify all of the arguments listed above"
+    }
+    
+    // Convert sample_table to path
+    sample_table = Channel.fromPath( params.sample_table )
+    
+    ARCHR(
       sample_table
     )
 }
