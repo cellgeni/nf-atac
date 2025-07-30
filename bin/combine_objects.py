@@ -79,12 +79,16 @@ def main():
     del cistopic_objects
     del cistopic_combined
 
-    # combine anndata objects
+    # combine anndata objects and write to disk
     anndata_objects = [ad.read_h5ad(file) for file in args.anndata]
-    anndata = ad.concat(anndata_objects)
+    adata_combined = ad.concat(
+        adatas=anndata_objects,
+        join="outer",
+    )
 
-    # write anndata object to the file
-    anndata.write_h5ad(os.path.join(args.output_dir, args.combined_anndata))
+    adata_combined.write_h5ad(
+        os.path.join(args.output_dir, args.combined_anndata),
+    )
 
 
 if __name__ == "__main__":

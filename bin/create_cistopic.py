@@ -53,12 +53,14 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<val>",
         type=int,
         help="Threshold for number of unique fragments in peaks",
+        default=None,
     )
     parser.add_argument(
         "--tss_enrichment_threshold",
         metavar="<val>",
         type=float,
         help="Threshold for TSS enrichment score",
+        default=None,
     )
     parser.add_argument(
         "--frip_threshold",
