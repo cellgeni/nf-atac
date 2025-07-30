@@ -1,7 +1,3 @@
-// NEXTFLOW FLAGS
-nextflow.enable.dsl=2
-
-
 // IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
 
