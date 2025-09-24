@@ -1,6 +1,6 @@
-// function to log error message if there is a memmory shortage
-def lowMemoryError(sample, task_name) {
-    log.warn "The memory is to low to perform ${task_name} for ${sample}"
+// function to log error message if there is a resource shortage
+def lowResourceError(sample, task_name) {
+    log.warn "Not enough resources to perform ${task_name} for ${sample}"
     return 'retry'
 }
 
