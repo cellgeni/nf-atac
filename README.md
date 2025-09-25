@@ -32,15 +32,22 @@ nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --cel
 This creates `results` directory with the following files:
 ```
 results/
-├── log
+├── log/
 │   ├── fragments_celltype_x_sample.csv # fragment counts matrix with shape (n_celltypes, n_samples)
 │   ├── fragments_per_celltype.csv # total fragment counts for each celltype
 │   ├── pseudobulk.audiovisual_neuroepithelium.log
 │   ├── pseudobulk.craniofacial.log
-├── narrowPeaks
+│   └── splitcelltypes.log
+├── pseudobulk/
+│   ├── fragments/
+│   │   ├── audiovisual_neuroepithelium_fragments.tsv.gz
+│   │   └── craniofacial_fragments.tsv.gz
+│   ├── bigwig/
+│   │   ├── audiovisual_neuroepithelium.bw
+│   │   └── craniofacial.bw
 │   ├── audiovisual_neuroepithelium_peaks.narrowPeak
-│   ├── craniofacial_peaks.narrowPeak
-├── pseudobulk_peaks.csv # contains fragment, peak counts and path to .narrowPeak file for each celltype (see example/pseudobulk_peaks.csv)
+│   └── craniofacial_peaks.narrowPeak
+├── pseudobulk_peaks.tsv # contains fragment, peak counts and path to .narrowPeak file for each celltype (see example/pseudobulk_peaks.csv)
 └── updated_sample_table.csv # updated sample table which contains fragment counts (see example/updated_sample_table.csv)
 ```
 
@@ -50,20 +57,23 @@ To run consensus peak calling and feature calculation you need to specify an **u
 nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./example/pseudobulk_peaks.tsv
 ```
 
-This will create a `consensus_paeks.bed` file, `cisTopic` and `.h5ad` objects for each sample and combined `cisTopic` and `.h5ad` objects for whole dataset:
+This will create a `consensus_peaks.bed` file, `cisTopic` and `.h5ad` objects for each sample and combined `cisTopic` and `.h5ad` objects for whole dataset:
 ```
-results
+results/
 ├── consensus_peaks.bed # consensus peaks
 ├── combined_cistopic_object.pkl
 ├── combined.h5ad
-├── WS_wEMB13400228
-│   ├── qc
-│   ├── WS_wEMB13400228_cistopic_obj.pkl
-│   └── WS_wEMB13400228.h5ad
-└── WS_wEMB13400229
-    ├── qc
-    ├── WS_wEMB13400229_cistopic_obj.pkl
-    └── WS_wEMB13400229.h5ad
+├── log/
+│   └── inferconsensus.log
+└── cistopic/
+    ├── WS_wEMB13400228/
+    │   ├── qc/
+    │   ├── WS_wEMB13400228_cistopic_obj.pkl
+    │   └── WS_wEMB13400228.h5ad
+    └── WS_wEMB13400229/
+        ├── qc/
+        ├── WS_wEMB13400229_cistopic_obj.pkl
+        └── WS_wEMB13400229.h5ad
 ```
 
 ### 3. Perform peak calling, infer consensus peaks and calculate features
