@@ -68,7 +68,7 @@ process MakePseudobulk {
         path(fragments_celltype_x_sample)
         path(chromsizes)
     output:
-        tuple path('output/*.tsv.gz'), val(celltype_name), val(fragments_num), emit: pseudobulk_fragments
+        tuple path('fragments/*.tsv.gz'), val(celltype_name), val(fragments_num), emit: pseudobulk_fragments
         path('bigwig/*.bw'), emit: bigwig
         path('*.log'), emit: log
     script:
@@ -80,7 +80,7 @@ process MakePseudobulk {
                 --celltype_annotation $celltypes \\
                 --fragments_celltype_x_sample $fragments_celltype_x_sample \\
                 --chromsizes $chromsizes \\
-                --output_dir output \\
+                --output_dir fragments \\
                 --bigwig_dir bigwig \\
                 --cpus $task.cpus \\
                 --logfile "pseudobulk.${celltype_name}.log"
