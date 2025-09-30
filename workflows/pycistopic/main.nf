@@ -8,6 +8,7 @@ include { CreatePythonObject } from '../../modules/pycistopic/main'
 include { CombinePythonObject } from '../../modules/pycistopic/main'
 include { CISTOPIC_COUNTFRAGMENTS } from '../../modules/local/cistopic/countfragments'
 include { CISTOPIC_SPLITANNOTATION } from '../../modules/local/cistopic/splitannotation'
+include { CISTOPIC_PSEUDOBULK } from '../../modules/local/cistopic/pseudobulk'
 
 
 workflow PEAKCALLING {
@@ -63,6 +64,7 @@ workflow PEAKCALLING {
                                             .map{ celltype_path -> [ celltype_path.baseName, celltype_path ] }
                                             .transpose()
                                             .combine(celltype_fragments, by: 0)
+                                            .map { name, path, fragments -> tuple( [id: name, fragments: fragments], path ) }
     
     // Get fragments files, indexes and fragment counts for each sample (the same as for barcode metrics)
     fragments = CISTOPIC_SPLITANNOTATION.out
@@ -71,15 +73,15 @@ workflow PEAKCALLING {
                                         .map{ sample_id, cellranger_arc_output, _fragment_counts -> 
                                         [
                                             sample_id,
-                                            file( "${cellranger_arc_output}/${fragments_filename}" ),
-                                            file( "${cellranger_arc_output}/${fragments_filename}.tbi" )
+                                            file( "${cellranger_arc_output}/*fragments.tsv.gz" ),
+                                            file( "${cellranger_arc_output}/*fragments.tsv.gz.tbi" )
                                         ]
                                         }
                                         .collect(flat: false)
                                         .transpose()
                                         .toList()
     // Make pseudobulk for each sample
-    MakePseudobulk(
+    CISTOPIC_PSEUDOBULK(
         fragments,
         celltypes,
         CISTOPIC_SPLITANNOTATION.out.fragments_celltype_x_sample,
