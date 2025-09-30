@@ -15,7 +15,7 @@ NF >= 5 {
 
 END {
     # Print results
-    print "barcode\tTotal_Fragments"
+    print "barcode,atac_fragments"
     for (barcode in barcode_counts) {
         print barcode "," barcode_counts[barcode]
     }
