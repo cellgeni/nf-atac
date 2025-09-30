@@ -6,74 +6,95 @@ include { InferConsensus } from '../../modules/pycistopic/main'
 include { QualityControl } from '../../modules/pycistopic/main'
 include { CreatePythonObject } from '../../modules/pycistopic/main'
 include { CombinePythonObject } from '../../modules/pycistopic/main'
+include { CISTOPIC_COUNTFRAGMENTS } from '../../modules/local/cistopic/countfragments'
+include { CISTOPIC_SPLITANNOTATION } from '../../modules/local/cistopic/splitannotation'
 
 
 workflow PEAKCALLING {
     take:
-        sample_table
-        celltype_annotation
-        chromsizes
-        fragments_filename
-        barcode_metrics_filename
-        narrowPeaks_dir
+    sample_table
+    celltype_annotation
+    chromsizes
+    fragments_filename
+    narrowPeaks_dir
+    
     main:
-        // Get barcode metrics and convert channel to list:
-        // 1) Get barcode metrics paths from sample table
-        // 2) Collect everything to List with elements [sample_id, barcode_metrics_path]
-        // 3) Transpose List -> Channel(List[sample_id], List[barcode_metrics_path])
-        // 4) Convert Channel ->  List(List[sample_id], List[barcode_metrics_path])
-        barcode_metrics = Channel.fromPath(sample_table, checkIfExists: true)
-                                 .splitCsv(skip: 1)
-                                 .map{ sample_id, cellranger_arc_output -> 
-                                 [
-                                    sample_id,
-                                    file( "${cellranger_arc_output}/${barcode_metrics_filename}" ),
-                                 ]}
-                                 .collect(flat: false)
-                                 .transpose()
-                                 .toList()
-  
+    // STEP1: Get barcode metrics
+    // Read sample table and get barcode metrics path
+    barcode_metrics = Channel.fromPath(sample_table, checkIfExists: true)
+        // Read sample table
+        .splitCsv(header: true)
+        // Get barcode metrics path
+        .map{ row ->
+            def barcode_metrics = file( "${row.filedir}/per_barcode_metrics.csv" )
+            tuple( [id: row.sample_id], barcode_metrics )
+        }
+        // Check if barcode metrics file exists
+        .branch { meta, barcode_metrics ->
+            has_metrics: barcode_metrics.exists()
+                return tuple( meta, barcode_metrics)
+            no_metrics: !barcode_metrics.exists()
+                log.info "No barcode metrics found for sample ${meta.id} at path: ${barcode_metrics}. Calculating..."
+                def filedir = barcode_metrics.getParent()
+                def fragments_path = file( "${filedir}/${fragments_filename}" )
+                // check if fragments file exists
+                if ( ! fragments_path.exists() ) {
+                    error("No fragments file found for sample ${meta.id} at path: ${fragments_path}. Please check your sample table.")
+                }
+                return tuple( meta, fragments_path )
+        }
 
-        // Split celltypes and filter sample table from duplicates
-        SplitCellTypeAnnotation(barcode_metrics, celltype_annotation, sample_table)
+    // Count barcode fragments if no barcode metrics found
+    CISTOPIC_COUNTFRAGMENTS(barcode_metrics.no_metrics)
 
-        // Get splited celltype files and combine them with fragment counts
-        celltype_fragments = SplitCellTypeAnnotation.out.celltype_fragments.splitCsv()
-        celltypes = SplitCellTypeAnnotation.out.celltypes
-                                               .map{ celltype_path -> [ celltype_path.baseName, celltype_path ] }
-                                               .transpose()
-                                               .combine(celltype_fragments, by: 0)
-        
-        // Get fragments files, indexes and fragment counts for each sample (the same as for barcode metrics)
-        fragments = SplitCellTypeAnnotation.out
-                                           .sample_table
-                                           .splitCsv(skip: 1)
-                                           .map{ sample_id, cellranger_arc_output, _fragment_counts -> 
-                                           [
-                                                sample_id,
-                                                file( "${cellranger_arc_output}/${fragments_filename}" ),
-                                                file( "${cellranger_arc_output}/${fragments_filename}.tbi" )
-                                           ]
-                                           }
-                                           .collect(flat: false)
-                                           .transpose()
-                                           .toList()
-        // Make pseudobulk for each sample
-        MakePseudobulk(
-            fragments,
-            celltypes,
-            SplitCellTypeAnnotation.out.fragments_celltype_x_sample,
-            chromsizes
-        )
+    // STEP2: Split celltypes and filter sample table from duplicates
+    metrics = barcode_metrics.has_metrics
+        .mix(CISTOPIC_COUNTFRAGMENTS.out.csv)
+        .collect(flat: false)
+        .transpose()
+        .toSortedList()
+    
+    metrics.view()
+    CISTOPIC_SPLITANNOTATION(metrics, celltype_annotation, sample_table)
 
-        // Perform peak calling for pseudobulks and collect all files
-        PeakCalling(MakePseudobulk.out.pseudobulk_fragments, narrowPeaks_dir)
-        narrow_peaks_list = PeakCalling.out.collect(flat: false).transpose().toList()
+    // Get splited celltype files and combine them with fragment counts
+    celltype_fragments = CISTOPIC_SPLITANNOTATION.out.celltype_fragments.splitCsv()
+    celltypes = CISTOPIC_SPLITANNOTATION.out.celltypes
+                                            .map{ celltype_path -> [ celltype_path.baseName, celltype_path ] }
+                                            .transpose()
+                                            .combine(celltype_fragments, by: 0)
+    
+    // Get fragments files, indexes and fragment counts for each sample (the same as for barcode metrics)
+    fragments = CISTOPIC_SPLITANNOTATION.out
+                                        .sample_table
+                                        .splitCsv(skip: 1)
+                                        .map{ sample_id, cellranger_arc_output, _fragment_counts -> 
+                                        [
+                                            sample_id,
+                                            file( "${cellranger_arc_output}/${fragments_filename}" ),
+                                            file( "${cellranger_arc_output}/${fragments_filename}.tbi" )
+                                        ]
+                                        }
+                                        .collect(flat: false)
+                                        .transpose()
+                                        .toList()
+    // Make pseudobulk for each sample
+    MakePseudobulk(
+        fragments,
+        celltypes,
+        CISTOPIC_SPLITANNOTATION.out.fragments_celltype_x_sample,
+        chromsizes
+    )
 
-        CollectPeakMetadata(narrow_peaks_list, narrowPeaks_dir)
+    // Perform peak calling for pseudobulks and collect all files
+    PeakCalling(MakePseudobulk.out.pseudobulk_fragments, narrowPeaks_dir)
+    narrow_peaks_list = PeakCalling.out.collect(flat: false).transpose().toList()
+
+    CollectPeakMetadata(narrow_peaks_list, narrowPeaks_dir)
+    
     emit:
-        sample_table = SplitCellTypeAnnotation.out.sample_table
-        peak_metadata = PeakCalling.out
+    sample_table = CISTOPIC_SPLITANNOTATION.out.sample_table
+    peak_metadata = PeakCalling.out
 }
 
 
@@ -131,7 +152,6 @@ workflow  PYCISTOPIC {
         callPeaksFlag
         inferConsensusFlag
         fragments_filename
-        barcode_metrics_filename
         narrowPeaks_dir
     main:
         // Create pseudobulk, call peaks and update sample table
@@ -141,7 +161,6 @@ workflow  PYCISTOPIC {
                 celltypes,
                 chromsizes,
                 fragments_filename,
-                barcode_metrics_filename,
                 narrowPeaks_dir
             )
             // get pseudobulk peaks and updated sample table
