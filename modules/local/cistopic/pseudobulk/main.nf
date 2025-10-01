@@ -26,7 +26,7 @@ process CISTOPIC_PSEUDOBULK {
     container "/nfs/cellgeni/singularity/images/scenicplus-fa55dae.sif"
     
     input:
-    tuple val(metalist), path(fragments, stageAs: 'sample_fragments/*/*'), path(fragments_index, stageAs: 'fragments/*/*')
+    tuple val(metalist), path(fragments, stageAs: 'sample_fragments/*/*'), path(fragments_index, stageAs: 'sample_fragments/*/*')
     tuple val(celltype_meta), path(celltypes)
     path(fragments_celltype_x_sample)
     path(chromsizes)

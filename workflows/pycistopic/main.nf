@@ -1,7 +1,7 @@
-include { SplitCellTypeAnnotation } from '../../modules/pycistopic/main'
-include { MakePseudobulk } from '../../modules/pycistopic/main'
-include { PeakCalling } from '../../modules/pycistopic/main'
-include { CollectPeakMetadata } from '../../modules/pycistopic/main'
+// include { SplitCellTypeAnnotation } from '../../modules/pycistopic/main'
+// include { MakePseudobulk } from '../../modules/pycistopic/main'
+// include { PeakCalling } from '../../modules/pycistopic/main'
+// include { CollectPeakMetadata } from '../../modules/pycistopic/main'
 include { InferConsensus } from '../../modules/pycistopic/main'
 include { QualityControl } from '../../modules/pycistopic/main'
 include { CreatePythonObject } from '../../modules/pycistopic/main'
@@ -9,7 +9,7 @@ include { CombinePythonObject } from '../../modules/pycistopic/main'
 include { CISTOPIC_COUNTFRAGMENTS } from '../../modules/local/cistopic/countfragments'
 include { CISTOPIC_SPLITANNOTATION } from '../../modules/local/cistopic/splitannotation'
 include { CISTOPIC_PSEUDOBULK } from '../../modules/local/cistopic/pseudobulk'
-
+include { CISTOPIC_CALLPEAKS } from '../../modules/local/cistopic/callpeaks'
 
 workflow PEAKCALLING {
     take:
@@ -51,35 +51,34 @@ workflow PEAKCALLING {
     // STEP2: Split celltypes and filter sample table from duplicates
     metrics = barcode_metrics.has_metrics
         .mix(CISTOPIC_COUNTFRAGMENTS.out.csv)
-        .collect(flat: false)
+        .collect(flat: false, sort: true)
         .transpose()
-        .toSortedList()
+        .toList()
     
-    metrics.view()
     CISTOPIC_SPLITANNOTATION(metrics, celltype_annotation, sample_table)
 
     // Get splited celltype files and combine them with fragment counts
     celltype_fragments = CISTOPIC_SPLITANNOTATION.out.celltype_fragments.splitCsv()
     celltypes = CISTOPIC_SPLITANNOTATION.out.celltypes
-                                            .map{ celltype_path -> [ celltype_path.baseName, celltype_path ] }
-                                            .transpose()
-                                            .combine(celltype_fragments, by: 0)
-                                            .map { name, path, fragments -> tuple( [id: name, fragments: fragments], path ) }
-    
+        .map{ celltype_path -> [ celltype_path.baseName, celltype_path ] }
+        .transpose()
+        .combine(celltype_fragments, by: 0)
+        .map { name, path, fragments -> tuple( [id: name, fragments: fragments], path ) }
+
     // Get fragments files, indexes and fragment counts for each sample (the same as for barcode metrics)
-    fragments = CISTOPIC_SPLITANNOTATION.out
-                                        .sample_table
-                                        .splitCsv(skip: 1)
-                                        .map{ sample_id, cellranger_arc_output, _fragment_counts -> 
-                                        [
-                                            sample_id,
-                                            file( "${cellranger_arc_output}/*fragments.tsv.gz" ),
-                                            file( "${cellranger_arc_output}/*fragments.tsv.gz.tbi" )
-                                        ]
-                                        }
-                                        .collect(flat: false)
-                                        .transpose()
-                                        .toList()
+    fragments = CISTOPIC_SPLITANNOTATION.out.sample_table
+        .splitCsv(header: true)
+        .map{ meta -> 
+            [
+                [id: meta.sample_id, fragments: meta.fragments],
+                file( "${meta.filedir}/*fragments.tsv.gz" )[0],
+                file( "${meta.filedir}/*fragments.tsv.gz.tbi" )[0]
+            ]
+        }
+        .collect(flat: false, sort: true)
+        .transpose()
+        .toList()
+
     // Make pseudobulk for each sample
     CISTOPIC_PSEUDOBULK(
         fragments,
@@ -89,14 +88,29 @@ workflow PEAKCALLING {
     )
 
     // Perform peak calling for pseudobulks and collect all files
-    PeakCalling(MakePseudobulk.out.pseudobulk_fragments, narrowPeaks_dir)
-    narrow_peaks_list = PeakCalling.out.collect(flat: false).transpose().toList()
+    CISTOPIC_CALLPEAKS(CISTOPIC_PSEUDOBULK.out.tsv)
 
-    CollectPeakMetadata(narrow_peaks_list, narrowPeaks_dir)
-    
+    // Collect peak metadata
+    peaks = CISTOPIC_CALLPEAKS.out.narrowPeak.map { meta, path, large_peaks, all_peaks -> 
+            def updated_meta = meta + [ large_peaks: large_peaks, all_peaks: all_peaks ]
+            tuple( updated_meta, path )
+        }
+    output_dir = params.output_dir ? params.output_dir : "."
+    peaks.collectFile(
+            name: "pseudobulk_peaks.csv",
+            storeDir: output_dir,
+            newLine: true,
+            seed: "celltype,fragments,large_peaks,all_peaks,path",
+            sort: { line -> line.split(',')[0] }
+        ) { meta, path ->
+            "${meta.id},${meta.fragments},${meta.large_peaks},${meta.all_peaks},${path.toString()}"
+        }
+        .subscribe { __ -> 
+                log.info("Pseudobulk peak calling stats are saved to ${output_dir}/pseudobulk_peaks.tsv")
+            }
     emit:
     sample_table = CISTOPIC_SPLITANNOTATION.out.sample_table
-    peak_metadata = PeakCalling.out
+    peaks        = peaks
 }
 
 
@@ -166,7 +180,7 @@ workflow  PYCISTOPIC {
                 narrowPeaks_dir
             )
             // get pseudobulk peaks and updated sample table
-            peak_metadata = PEAKCALLING.out.peak_metadata
+            peak_metadata = PEAKCALLING.out.peaks
             sample_table = PEAKCALLING.out.sample_table
         } else {
             sample_table = Channel.fromPath(sample_table, checkIfExists: true)

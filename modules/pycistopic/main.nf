@@ -5,27 +5,27 @@ def lowResourceError(sample, task_name) {
 }
 
 // function to handle errors in MakePseudobulk process
-def MakePseudobulkErrorHandler(exitStatus, celltypes) {
-    if ( exitStatus == 130 ) {
-        log.warn "The memory is to low to perform MakePseudobulk"
-        return 'retry'
-    } else if ( exitStatus == 0 ) {
-        def celltype_name = celltypes.getName().split('\\.')[0]
-        log.warn "No fragments found for ${celltype_name}"
-        return 'ignore'
-    } else {
-        return 'terminate'
-    }
-}
+// def MakePseudobulkErrorHandler(exitStatus, celltypes) {
+//     if ( exitStatus == 130 ) {
+//         log.warn "The memory is to low to perform MakePseudobulk"
+//         return 'retry'
+//     } else if ( exitStatus == 0 ) {
+//         def celltype_name = celltypes.getName().split('\\.')[0]
+//         log.warn "No fragments found for ${celltype_name}"
+//         return 'ignore'
+//     } else {
+//         return 'terminate'
+//     }
+// }
 
-// function to predict a memory consumption for MakePseudobulk process
-def CalculatePseudobulkMemory(fragments_num, attempt) {
-    def a = 2.3e-7
-    def b = 32
-    def x = fragments_num.toDouble()
-    def mem = Math.ceil(a * x + b) + 32 * (attempt - 1)
-    return mem
-}
+// // function to predict a memory consumption for MakePseudobulk process
+// def CalculatePseudobulkMemory(fragments_num, attempt) {
+//     def a = 2.3e-7
+//     def b = 32
+//     def x = fragments_num.toDouble()
+//     def mem = Math.ceil(a * x + b) + 32 * (attempt - 1)
+//     return mem
+// }
 
 // Splits annotation file in separate files (per celltype) and calculates fragments numbers
 process SplitCellTypeAnnotation {
