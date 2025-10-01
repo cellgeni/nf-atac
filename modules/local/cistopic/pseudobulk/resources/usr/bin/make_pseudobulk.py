@@ -85,7 +85,10 @@ def init_parser() -> argparse.ArgumentParser:
         default="barcode",
     )
     parser.add_argument(
-        "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
+        "--cpus",
+        metavar="<num>",
+        type=int,
+        help="Specify a number of cpu cores to use"
     )
     parser.add_argument(
         "--logfile",
@@ -93,6 +96,18 @@ def init_parser() -> argparse.ArgumentParser:
         type=str,
         help="Specify a log file name",
         default="pseudobulk.log",
+    )
+    parser.add_argument(
+        "--split_pattern",
+        metavar="<str>",
+        type=str,
+        help="Pattern to split cell barcode from sample id. Default: `None`.",
+        default=None
+    )
+    parser.add_argument(
+        "--normalize_bigwig",
+        action="store_true",
+        help="If set, bigwig files will be normalized to 1 million reads",
     )
     return parser
 
@@ -339,7 +354,8 @@ def main():
             bigwig_path=args.bigwig_dir,
             path_to_fragments=filtered_fragments_dict,
             n_cpu=args.cpus,
-            normalize_bigwig=True,
+            split_pattern=args.split_pattern,
+            normalize_bigwig=args.normalize_bigwig,
             temp_dir=temp_dir,
         )
 

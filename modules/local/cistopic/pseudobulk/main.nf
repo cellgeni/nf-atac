@@ -39,8 +39,10 @@ process CISTOPIC_PSEUDOBULK {
     
     script:
     def samples = metalist.collect{ it.id }.join(' ')
+    def args = task.ext.args ?: ''
     """
     make_pseudobulk.py \\
+            $args \\
             --sample_id $samples \\
             --fragments $fragments \\
             --celltype_annotation $celltypes \\
