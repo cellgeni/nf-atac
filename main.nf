@@ -59,9 +59,9 @@ workflow {
     celltypes = file( params.celltypes )
 
     // Load other files required for cisTopic pipeline
-    chromsizes = file( params.chromsizes )
-    blacklist = file( params.blacklist )
-    tss_bed = file( params.tss_bed )
+    chromsizes = channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], file( params.chromsizes ) ) )
+    blacklist = channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], file( params.blacklist ) ) )
+    tss_bed = channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], file( params.tss_bed ) ) )
 
     // Run PyCistopic pipeline
     PYCISTOPIC(

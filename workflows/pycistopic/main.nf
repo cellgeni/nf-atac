@@ -10,6 +10,9 @@ include { CISTOPIC_COUNTFRAGMENTS } from '../../modules/local/cistopic/countfrag
 include { CISTOPIC_SPLITANNOTATION } from '../../modules/local/cistopic/splitannotation'
 include { CISTOPIC_PSEUDOBULK } from '../../modules/local/cistopic/pseudobulk'
 include { CISTOPIC_CALLPEAKS } from '../../modules/local/cistopic/callpeaks'
+include { CISTOPIC_INFERCONSENSUS } from '../../modules/local/cistopic/inferconsensus'
+include { CISTOPIC_QUALITYCONTROL } from '../../modules/local/cistopic/qualitycontrol'
+include { CISTOPIC_CREATEOBJECT } from '../../modules/local/cistopic/createobject'
 
 workflow PEAKCALLING {
     take:
@@ -57,6 +60,7 @@ workflow PEAKCALLING {
     
     CISTOPIC_SPLITANNOTATION(metrics, celltype_annotation, sample_table)
 
+    // STEP3: Make pseudobulks for each celltype
     // Get splited celltype files and combine them with fragment counts
     celltype_fragments = CISTOPIC_SPLITANNOTATION.out.celltype_fragments.splitCsv()
     celltypes = CISTOPIC_SPLITANNOTATION.out.celltypes
@@ -83,11 +87,11 @@ workflow PEAKCALLING {
     CISTOPIC_PSEUDOBULK(
         fragments,
         celltypes,
-        CISTOPIC_SPLITANNOTATION.out.fragments_celltype_x_sample,
-        chromsizes
+        chromsizes,
+        CISTOPIC_SPLITANNOTATION.out.fragments_celltype_x_sample
     )
 
-    // Perform peak calling for pseudobulks and collect all files
+    // STEP 4: Perform peak calling for pseudobulks and collect all files
     CISTOPIC_CALLPEAKS(CISTOPIC_PSEUDOBULK.out.tsv)
 
     // Collect peak metadata
@@ -108,44 +112,69 @@ workflow PEAKCALLING {
         .subscribe { __ -> 
                 log.info("Pseudobulk peak calling stats are saved to ${output_dir}/pseudobulk_peaks.tsv")
             }
+    // Collect versions
+    versions = CISTOPIC_COUNTFRAGMENTS.out.versions.first()
+        .mix(
+            CISTOPIC_SPLITANNOTATION.out.versions.first(),
+            CISTOPIC_PSEUDOBULK.out.versions.first(),
+            CISTOPIC_CALLPEAKS.out.versions.first()
+        )
+
     emit:
     sample_table = CISTOPIC_SPLITANNOTATION.out.sample_table
     peaks        = peaks
+    versions     = versions
 }
 
 
 workflow INFERPEAKS {
     take:
-        peak_metadata
+        peaks
         sample_table
         chromsizes
         blacklist
         tss_bed
         fragments_filename
     main:
+        // STEP 0: Prepare inputs
         // Get fragment paths from sample table
-        fragments = sample_table.splitCsv(skip: 1)
-                                .map{ sample_id, cellranger_arc_output, fragments_num -> 
-                                [
-                                    sample_id,
-                                    file( "${cellranger_arc_output}/${fragments_filename}" ),
-                                    file( "${cellranger_arc_output}/${fragments_filename}.tbi" ),
-                                    fragments_num
-                                ]
-                                }
+        fragments = sample_table
+            .splitCsv(header: true)
+            .map{ meta -> 
+                [
+                    [id: meta.sample_id, fragments: meta.fragments],
+                    file( "${meta.filedir}/*fragments.tsv.gz" )[0],
+                    file( "${meta.filedir}/*fragments.tsv.gz.tbi" )[0]
+                ]
+            }
 
-        // Get .narrowPeak paths
-        narrow_peak_paths = peak_metadata.map{ _celltype, _fragments, _large_peaks, _all_peaks, path -> path}.collect()
+        // Get peak paths from peaks channel
+        narrowPeaks = peaks.toSortedList()
+            .map{ list -> 
+                def celltype_names = list.collect{ it[0].id }
+                def narrowpeak_files = list.collect{ it[1] }
+                return [ celltype_names, narrowpeak_files ]
+            }
+        
+        // STEP 1: Get consensus peaks
+        CISTOPIC_INFERCONSENSUS(
+            narrowPeaks,
+            chromsizes,
+            blacklist
+        )
 
-        // Get consensus peaks
-        consensus = InferConsensus(narrow_peak_paths, chromsizes, blacklist).bed.collect()
+        consensus = CISTOPIC_INFERCONSENSUS.out.bed.collect()
 
-        // Perform QC
-        fragments_consensus_qc = QualityControl(fragments, consensus, tss_bed)
+        // STEP 2: Perform QC
+        CISTOPIC_QUALITYCONTROL(fragments, consensus, tss_bed)
 
-        // Create cisTopic object
-        CreatePythonObject(fragments_consensus_qc, blacklist)
-        CreatePythonObject.out.toList()
+        // SPET 3: Create cisTopic object
+        CISTOPIC_CREATEOBJECT(
+            CISTOPIC_QUALITYCONTROL.out.qc,
+            consensus,
+            blacklist
+        )
+        CISTOPIC_CREATEOBJECT.out.toList()
                            .branch {
                                 it ->
                                 combine_objects: it.size() > 1
@@ -153,7 +182,7 @@ workflow INFERPEAKS {
                            }
                            .set { objects }
 
-        // Combine cisTopic objects
+        // STEP 4: Combine cisTopic objects
         CombinePythonObject(objects.combine_objects.transpose().toList())
 }
 
