@@ -1,5 +1,7 @@
 process CISTOPIC_CALLPEAKS {
-    tag "Performing peak calling for ${celltype_name}"
+    tag "Performing peak calling for ${meta.id}"
+    container '/nfs/cellgeni/singularity/images/scenicplus-fa55dae.sif'
+    
     input:
     tuple val(meta), path(fragments)
 
