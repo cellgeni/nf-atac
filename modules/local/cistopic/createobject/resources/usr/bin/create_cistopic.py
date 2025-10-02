@@ -1,0 +1,198 @@
+#!/usr/bin/env python3
+
+import os
+import pickle
+import json
+import argparse
+import anndata as ad
+from typing import List
+from numpy import ndarray
+from pandas import DataFrame, read_parquet
+from pycisTopic.qc import get_barcodes_passing_qc_for_sample
+from pycisTopic.cistopic_class import create_cistopic_object_from_fragments
+
+
+def init_parser() -> argparse.ArgumentParser:
+    """
+    Initialise argument parser for the script
+    """
+    parser = argparse.ArgumentParser(
+        description="Creates cisTopic object from fragments, consensus peaks and quality control files"
+    )
+    parser.add_argument(
+        "--sample_id", type=str, metavar="<val>", help="Sample identificator"
+    )
+    parser.add_argument(
+        "--fragments",
+        metavar="<file>",
+        type=str,
+        help="Specify a path to the fragments.tsv.gz file (fragments.tsv.gz should be in the same directory)",
+    )
+    parser.add_argument(
+        "--consensus",
+        metavar="<file>",
+        type=str,
+        help="Specify a path to the file with consensus peaks",
+    )
+    parser.add_argument(
+        "--blacklist",
+        metavar="<file>",
+        type=str,
+        help="Specify a path to bed file containing blacklist regions (Amemiya et al., 2019)",
+    )
+    parser.add_argument(
+        "--qc_dir",
+        metavar="<dir>",
+        type=str,
+        help="Specify a path to the directory with qualtiry control results",
+    )
+    parser.add_argument(
+        "--cpus", metavar="<num>", type=int, help="Specify a number of cpu cores to use"
+    )
+    parser.add_argument(
+        "--unique_fragments_threshold",
+        metavar="<val>",
+        type=int,
+        help="Threshold for number of unique fragments in peaks",
+        default=None,
+    )
+    parser.add_argument(
+        "--tss_enrichment_threshold",
+        metavar="<val>",
+        type=float,
+        help="Threshold for TSS enrichment score",
+        default=None,
+    )
+    parser.add_argument(
+        "--frip_threshold",
+        metavar="<val>",
+        type=float,
+        help="Threshold for fraction of reads in peaks (FRiP). If not defined the threshold will be set to 0",
+        default=0,
+    )
+    parser.add_argument(
+        "--min_frag",
+        metavar="<int>",
+        type=int,
+        help="Minimal number of fragments in a cell for the cell to be kept. Default: 1",
+        default=1,
+    )
+    parser.add_argument(
+        "--min_cell",
+        metavar="<int>",
+        type=int,
+        help="Minimal number of cell in which a region is detected to be kept. Default: 1",
+        default=1,
+    )
+    parser.add_argument(
+        "--is_acc",
+        metavar="<int>",
+        type=int,
+        help="Minimal number of fragments for a region to be considered accessible. Default: 1",
+        default=1,
+    )
+    parser.add_argument(
+        "--check_for_duplicates",
+        help="If no duplicate counts are provided per row in the fragments file, whether to collapse duplicates. Default: False",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--use_automatic_thresholds",
+        help="Use automatic thresholds for unique fragments in peaks and TSS enrichment score as calculated by Otsu's method",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--split_pattern",
+        metavar="<val>",
+        type=str,
+        help="Pattern to split cell barcode from sample id. Default: '___'",
+        default="___",
+    )
+    return parser
+
+
+def read_metrics(qc_dir: str, sample_id: str, barcodes: ndarray) -> DataFrame:
+    """
+    Read QC metrics from <sample_id>.fragments_stats_per_cb.parquet file
+    qc_dir (str): directory with QC results
+    sample_id (str): sample identifier
+    barcodes (List[str]): a list of barcodes that passed filtering
+    """
+    # get file's path
+    fragments_stats_file = os.path.join(
+        qc_dir, f"{sample_id}.fragments_stats_per_cb.parquet"
+    )
+    if not os.path.exists(fragments_stats_file):
+        raise ValueError('No file with path "{fragments_stats_file}" was found')
+    # if there is only 1 passing barcode it is returned as 0d array
+    # as result of numpy squeeze function see
+    # https://github.com/aertslab/pycisTopic/blob/787ce422a37f5975b0ebb9e7b19eeaed44847501/src/pycisTopic/qc.py#L140C40-L140C50
+    barcodes = barcodes if barcodes.shape else [barcodes[()]]
+    # read data and filter barcodes
+    fragments_stats = read_parquet(fragments_stats_file, engine="pyarrow")
+    fragments_stats = fragments_stats.set_index("CB")
+    fragments_stats = fragments_stats.loc[barcodes].copy()
+    return fragments_stats
+
+
+def main():
+    # parse script arguments
+    parser = init_parser()
+    args = parser.parse_args()
+
+    # filter low quality cells
+    barcodes, thresholds = get_barcodes_passing_qc_for_sample(
+        sample_id=args.sample_id,
+        pycistopic_qc_output_dir=args.qc_dir,
+        unique_fragments_threshold=args.unique_fragments_threshold,
+        tss_enrichment_threshold=args.tss_enrichment_threshold,
+        frip_threshold=args.frip_threshold,
+        use_automatic_thresholds=args.use_automatic_thresholds,
+    )
+
+    # read fragments stats
+    fragments_stats = read_metrics(args.qc_dir, args.sample_id, barcodes)
+
+    # create a cistopic object
+    cistopic_obj = create_cistopic_object_from_fragments(
+        path_to_fragments=args.fragments,
+        path_to_regions=args.consensus,
+        path_to_blacklist=args.blacklist,
+        metrics=fragments_stats,
+        valid_bc=barcodes,
+        n_cpu=args.cpus,
+        min_frag=args.min_frag,
+        min_cell=args.min_cell,
+        is_acc=args.is_acc,
+        check_for_duplicates=args.check_for_duplicates,
+        project=args.sample_id,
+        split_pattern=args.split_pattern,
+    )
+
+    # save to pickle file
+    with open(f"{args.sample_id}_cistopic_obj.pkl", "wb") as file:
+        pickle.dump(cistopic_obj, file)
+    
+    # save good barcodes and thresholds
+    with open(f"{args.sample_id}_good_cells.txt", 'w') as file:
+        text = "\n".join(barcodes.tolist())
+        file.write(text)
+    
+    # save thresholds
+    with open(f"{args.sample_id}_thresholds.json", 'w') as file:
+        json.dump(thresholds, file)
+
+    # create anndata object
+    adata = ad.AnnData(
+        X=cistopic_obj.fragment_matrix.T,
+        obs=cistopic_obj.cell_data.infer_objects(),
+        var=cistopic_obj.region_data.infer_objects(),
+        layers={"binary": cistopic_obj.binary_matrix.T},
+    )
+
+    # save to h5ad file
+    adata.write_h5ad(f"{args.sample_id}.h5ad")
+
+
+if __name__ == "__main__":
+    main()
