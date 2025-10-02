@@ -40,6 +40,10 @@ def helpMessage() {
     """.stripIndent()
 }
 
+def lowResourceError(sample, task_name) {
+    log.warn "Not enough resources to perform ${task_name} for ${sample}"
+    return 'retry'
+}
 
 // WORKFLOW
 workflow {
