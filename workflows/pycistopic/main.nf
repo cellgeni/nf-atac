@@ -1,11 +1,3 @@
-// include { SplitCellTypeAnnotation } from '../../modules/pycistopic/main'
-// include { MakePseudobulk } from '../../modules/pycistopic/main'
-// include { PeakCalling } from '../../modules/pycistopic/main'
-// include { CollectPeakMetadata } from '../../modules/pycistopic/main'
-include { InferConsensus } from '../../modules/pycistopic/main'
-include { QualityControl } from '../../modules/pycistopic/main'
-include { CreatePythonObject } from '../../modules/pycistopic/main'
-include { CombinePythonObject } from '../../modules/pycistopic/main'
 include { CISTOPIC_COUNTFRAGMENTS } from '../../modules/local/cistopic/countfragments'
 include { CISTOPIC_SPLITANNOTATION } from '../../modules/local/cistopic/splitannotation'
 include { CISTOPIC_PSEUDOBULK } from '../../modules/local/cistopic/pseudobulk'
@@ -13,6 +5,8 @@ include { CISTOPIC_CALLPEAKS } from '../../modules/local/cistopic/callpeaks'
 include { CISTOPIC_INFERCONSENSUS } from '../../modules/local/cistopic/inferconsensus'
 include { CISTOPIC_QUALITYCONTROL } from '../../modules/local/cistopic/qualitycontrol'
 include { CISTOPIC_CREATEOBJECT } from '../../modules/local/cistopic/createobject'
+include { CISTOPIC_COMBINEOBJECTS } from '../../modules/local/cistopic/combineobjects'
+include { ANNDATA_CONCAT } from '../../modules/local/anndata/concat'
 
 workflow PEAKCALLING {
     take:
@@ -122,6 +116,7 @@ workflow PEAKCALLING {
 
     emit:
     sample_table = CISTOPIC_SPLITANNOTATION.out.sample_table
+    pseudobulk   = CISTOPIC_PSEUDOBULK.out.tsv
     peaks        = peaks
     versions     = versions
 }
@@ -174,56 +169,96 @@ workflow INFERPEAKS {
             consensus,
             blacklist
         )
-        CISTOPIC_CREATEOBJECT.out.toList()
-                           .branch {
-                                it ->
-                                combine_objects: it.size() > 1
-                                sample: true
-                           }
-                           .set { objects }
+        
+        cistopic_objects = CISTOPIC_CREATEOBJECT.out.pkl
+            .toSortedList()
+            .branch {
+                it ->
+                combine_objects: it.size() > 1
+                sample: true
+            }
+        
+        anndata_objects = CISTOPIC_CREATEOBJECT.out.h5ad
+            .toSortedList()
+            .branch {
+                it ->
+                combine_objects: it.size() > 1
+                sample: true
+            }
 
-        // STEP 4: Combine cisTopic objects
-        CombinePythonObject(objects.combine_objects.transpose().toList())
+        // STEP 4: Combine cisTopic objects if needed
+        CISTOPIC_COMBINEOBJECTS(cistopic_objects.combine_objects.transpose().toList())
+        ANNDATA_CONCAT(anndata_objects.combine_objects.transpose().toList())
+
+        // STEP 5: Collect versions
+        versions = CISTOPIC_INFERCONSENSUS.out.versions.first()
+            .mix(
+                CISTOPIC_QUALITYCONTROL.out.versions.first(),
+                CISTOPIC_CREATEOBJECT.out.versions.first(),
+                CISTOPIC_COMBINEOBJECTS.out.versions.first().ifEmpty{ Channel.empty() },
+                ANNDATA_CONCAT.out.versions.first().ifEmpty{ Channel.empty() }
+            )
+
+        emit:
+        consensus = consensus
+        cistopic  = cistopic_objects.sample.mix(CISTOPIC_COMBINEOBJECTS.out.pkl)
+        anndata   = anndata_objects.sample.mix(ANNDATA_CONCAT.out.h5ad)
+        versions  = versions
+
 }
 
 
 workflow  PYCISTOPIC {
     take:
-        sample_table
-        celltypes
-        chromsizes
-        blacklist
-        tss_bed
-        callPeaksFlag
-        inferConsensusFlag
-        fragments_filename
-        narrowPeaks_dir
+    sample_table
+    celltypes
+    chromsizes
+    blacklist
+    tss_bed
+    callPeaksFlag
+    inferConsensusFlag
+    fragments_filename
+    narrowPeaks_dir
+    
     main:
-        // Create pseudobulk, call peaks and update sample table
-        if ( callPeaksFlag ) {
-            PEAKCALLING(
-                sample_table,
-                celltypes,
-                chromsizes,
-                fragments_filename,
-                narrowPeaks_dir
-            )
-            // get pseudobulk peaks and updated sample table
-            peak_metadata = PEAKCALLING.out.peaks
-            sample_table = PEAKCALLING.out.sample_table
-        } else {
-            sample_table = Channel.fromPath(sample_table, checkIfExists: true)
-            peak_metadata = Channel.fromPath(celltypes, checkIfExists: true).splitCsv(skip:1, sep:'\t')
-        }
+    versions = Channel.empty()
 
-        if ( inferConsensusFlag ) {
-            INFERPEAKS(
-                peak_metadata,
-                sample_table,
-                chromsizes,
-                blacklist,
-                tss_bed,
-                fragments_filename
-            )
-        }
+    // Create pseudobulk, call peaks and update sample table
+    if ( callPeaksFlag ) {
+        PEAKCALLING(
+            sample_table,
+            celltypes,
+            chromsizes,
+            fragments_filename,
+            narrowPeaks_dir
+        )
+
+        versions = versions.mix(PEAKCALLING.out.versions)
+        // get pseudobulk peaks and updated sample table
+        peak_metadata = PEAKCALLING.out.peaks
+        sample_table = PEAKCALLING.out.sample_table
+    } else {
+        sample_table = Channel.fromPath(sample_table, checkIfExists: true)
+        peak_metadata = Channel.fromPath(celltypes, checkIfExists: true).splitCsv(skip:1, sep:'\t')
+    }
+
+    if ( inferConsensusFlag ) {
+        INFERPEAKS(
+            peak_metadata,
+            sample_table,
+            chromsizes,
+            blacklist,
+            tss_bed,
+            fragments_filename
+        )
+        versions = versions.mix(INFERPEAKS.out.versions)
+    }
+
+    emit:
+    pseudobulk = callPeaksFlag ? PEAKCALLING.out.pseudobulk : Channel.empty()
+    peaks      = callPeaksFlag ? PEAKCALLING.out.peaks : Channel.empty()
+    consensus  = inferConsensusFlag ? INFERPEAKS.out.consensus : Channel.empty()
+    cistopic   = inferConsensusFlag ? INFERPEAKS.out.cistopic : Channel.empty()
+    anndata    = inferConsensusFlag ? INFERPEAKS.out.anndata : Channel.empty()
+    versions   = versions
 }
