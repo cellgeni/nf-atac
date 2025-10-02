@@ -109,7 +109,7 @@ workflow PEAKCALLING {
     // Collect versions
     versions = CISTOPIC_COUNTFRAGMENTS.out.versions.first()
         .mix(
-            CISTOPIC_SPLITANNOTATION.out.versions.first(),
+            CISTOPIC_SPLITANNOTATION.out.versions,
             CISTOPIC_PSEUDOBULK.out.versions.first(),
             CISTOPIC_CALLPEAKS.out.versions.first()
         )
@@ -191,12 +191,12 @@ workflow INFERPEAKS {
         ANNDATA_CONCAT(anndata_objects.combine_objects.transpose().toList())
 
         // STEP 5: Collect versions
-        versions = CISTOPIC_INFERCONSENSUS.out.versions.first()
+        versions = CISTOPIC_INFERCONSENSUS.out.versions
             .mix(
                 CISTOPIC_QUALITYCONTROL.out.versions.first(),
                 CISTOPIC_CREATEOBJECT.out.versions.first(),
-                CISTOPIC_COMBINEOBJECTS.out.versions.first().ifEmpty{ Channel.empty() },
-                ANNDATA_CONCAT.out.versions.first().ifEmpty{ Channel.empty() }
+                CISTOPIC_COMBINEOBJECTS.out.versions.ifEmpty{ Channel.empty() },
+                ANNDATA_CONCAT.out.versions.ifEmpty{ Channel.empty() }
             )
 
         emit:
