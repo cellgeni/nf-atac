@@ -28,8 +28,8 @@ process CISTOPIC_PSEUDOBULK {
     input:
     tuple val(metalist), path(fragments, stageAs: 'sample_fragments/*/*'), path(fragments_index, stageAs: 'sample_fragments/*/*')
     tuple val(celltype_meta), path(celltypes)
+    tuple val(chromsizes_meta), path(chromsizes)
     path(fragments_celltype_x_sample)
-    path(chromsizes)
     
     output:
     tuple val(celltype_meta), path('fragments/*.tsv.gz'), emit: tsv
@@ -58,6 +58,7 @@ process CISTOPIC_PSEUDOBULK {
         python: \$(python --version | awk '{print \$2}')
         pycisTopic: \$( python -c "import pycisTopic; print(pycisTopic.__version__)" )
         pandas: \$( python -c "import pandas; print(pandas.__version__)" )
+        chromsizes: ${chromsizes_meta.id}
     END_VERSIONS
     """
 }
