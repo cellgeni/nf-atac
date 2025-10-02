@@ -13,7 +13,7 @@ process CISTOPIC_COMBINEOBJECTS {
     """
     combine_objects.py \\
         --cistopic $cistopic \\
-        --combined_cistopic combined_cistopic_object.pkl
+        --output combined_cistopic_object.pkl
     
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
