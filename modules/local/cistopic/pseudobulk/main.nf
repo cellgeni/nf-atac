@@ -23,7 +23,7 @@ def CalculatePseudobulkMemory(fragments_num, attempt) {
 
 process CISTOPIC_PSEUDOBULK {
     tag "Making pseudobulk for ${celltype_meta.id}"
-    container "/nfs/cellgeni/singularity/images/scenicplus-fa55dae.sif"
+    container "docker://quay.io/cellgeni/pycistopic:2.0a0"
     
     input:
     tuple val(metalist), path(fragments, stageAs: 'sample_fragments/*/*'), path(fragments_index, stageAs: 'sample_fragments/*/*')

@@ -1,6 +1,8 @@
 // Splits annotation file in separate files (per celltype) and calculates fragments numbers
 process CISTOPIC_SPLITANNOTATION {
     tag "Splitting celltype annotation"
+    container 'docker://quay.io/cellgeni/pycistopic:2.0a0'
+
     input:
     tuple val(metalist), path(barcode_metrics, stageAs: 'barcode_metrics/*.csv')
     path(celltypes)

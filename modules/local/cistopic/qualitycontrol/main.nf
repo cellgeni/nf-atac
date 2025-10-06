@@ -1,6 +1,6 @@
 process CISTOPIC_QUALITYCONTROL {
     tag "Running QC for sample $meta.id"
-    container '/nfs/cellgeni/singularity/images/scenicplus-fa55dae.sif'
+    container 'docker://quay.io/cellgeni/pycistopic:2.0a0'
     
     input:
     tuple val(meta), path(fragments), path(fragments_index)

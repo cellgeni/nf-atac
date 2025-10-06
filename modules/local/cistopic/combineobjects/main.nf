@@ -1,6 +1,6 @@
 process CISTOPIC_COMBINEOBJECTS {
     tag "Combining Python Objects"
-    container '/nfs/cellgeni/singularity/images/scenicplus-fa55dae.sif'
+    container 'docker://quay.io/cellgeni/pycistopic:2.0a0'
 
     input:
     tuple val(metalist), path(cistopic, stageAs: "cistopic/*.pkl")

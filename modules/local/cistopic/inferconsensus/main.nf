@@ -1,6 +1,6 @@
 process CISTOPIC_INFERCONSENSUS {
     tag "Infering consensus peaks"
-    container '/nfs/cellgeni/singularity/images/scenicplus-fa55dae.sif'
+    container 'docker://quay.io/cellgeni/pycistopic:2.0a0'
     
     input:
     tuple val(meta), path("narrowPeaks/*")

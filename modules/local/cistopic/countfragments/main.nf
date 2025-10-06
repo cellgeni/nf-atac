@@ -1,5 +1,7 @@
 process CISTOPIC_COUNTFRAGMENTS {
     tag "Counting fragments for ${meta.id}"
+    container 'docker://quay.io/cellgeni/pycistopic:2.0a0'
+
     input:
     tuple val(meta), path(fragments)
 
