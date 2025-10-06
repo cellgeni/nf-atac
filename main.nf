@@ -79,4 +79,13 @@ workflow {
         params.fragments_filename,
         params.narrowPeaks_dir
     )
+
+    // Collect versions
+    PYCISTOPIC.out.versions
+        .splitText(by: 20)
+        .unique()
+        .collectFile(name: 'versions.yml', storeDir: params.output_dir, sort: true)
+        .subscribe { __ -> 
+            log.info("Versions saved to ${params.output_dir}/versions.yml")
+        }
 }
