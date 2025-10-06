@@ -11,8 +11,6 @@ workflow  PYCISTOPIC {
     tss_bed
     callPeaksFlag
     inferConsensusFlag
-    fragments_filename
-    narrowPeaks_dir
     
     main:
     versions = Channel.empty()
@@ -22,9 +20,7 @@ workflow  PYCISTOPIC {
         CISTOPIC_PEAKCALLING(
             sample_table,
             celltypes,
-            chromsizes,
-            fragments_filename,
-            narrowPeaks_dir
+            chromsizes
         )
 
         versions = versions.mix(CISTOPIC_PEAKCALLING.out.versions)
@@ -42,8 +38,7 @@ workflow  PYCISTOPIC {
             sample_table,
             chromsizes,
             blacklist,
-            tss_bed,
-            fragments_filename
+            tss_bed
         )
         versions = versions.mix(CISTOPIC_INFERPEAKS.out.versions)
     }

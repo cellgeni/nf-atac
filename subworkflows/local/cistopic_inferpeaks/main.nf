@@ -12,7 +12,6 @@ workflow CISTOPIC_INFERPEAKS {
         chromsizes
         blacklist
         tss_bed
-        fragments_filename
     main:
         // STEP 0: Prepare inputs
         // Get fragment paths from sample table

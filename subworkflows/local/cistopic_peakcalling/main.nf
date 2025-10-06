@@ -8,8 +8,6 @@ workflow CISTOPIC_PEAKCALLING {
     sample_table
     celltype_annotation
     chromsizes
-    fragments_filename
-    narrowPeaks_dir
     
     main:
     // STEP1: Get barcode metrics
@@ -29,7 +27,7 @@ workflow CISTOPIC_PEAKCALLING {
             no_metrics: !barcode_metrics.exists()
                 log.info "No barcode metrics found for sample ${meta.id} at path: ${barcode_metrics}. Calculating..."
                 def filedir = barcode_metrics.getParent()
-                def fragments_path = file( "${filedir}/${fragments_filename}" )
+                def fragments_path = file( "${filedir}/*fragments.tsv.gz" )[0]
                 // check if fragments file exists
                 if ( ! fragments_path.exists() ) {
                     error("No fragments file found for sample ${meta.id} at path: ${fragments_path}. Please check your sample table.")
