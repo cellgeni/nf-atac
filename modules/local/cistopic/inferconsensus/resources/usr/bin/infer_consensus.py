@@ -8,10 +8,9 @@ import warnings
 import argparse
 from typing import Dict
 from functools import wraps
-from pandas import read_csv
+from pandas import read_csv, read_table, DataFrame
 from pyranges import PyRanges
 from colored_logger import setup_logging
-from make_pseudobulk import read_chromsizes
 from pycisTopic.iterative_peak_calling import get_consensus_peaks
 
 
@@ -80,6 +79,20 @@ def init_parser() -> argparse.ArgumentParser:
         default="inferconsensus.log",
     )
     return parser
+
+
+def read_chromsizes(chromsizes_file: str) -> DataFrame:
+    """
+    Read chromsizes file to pandas DataFrame and add "Start" column
+    Args:
+        chromsizes_file (str): chromsizes_file (str): path to the file with chromosome lengths from the UCSC databases
+
+    Returns:
+        DataFrame: contains chromsizes
+    """
+    chromsizes = read_table(chromsizes_file, header=None, names=["Chromosome", "End"])
+    chromsizes.insert(1, "Start", 0)
+    return chromsizes
 
 
 def block_stdout(func):

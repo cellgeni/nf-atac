@@ -2,6 +2,7 @@
 
 import os
 import pickle
+import json
 import argparse
 import anndata as ad
 from typing import List
@@ -70,6 +71,32 @@ def init_parser() -> argparse.ArgumentParser:
         default=0,
     )
     parser.add_argument(
+        "--min_frag",
+        metavar="<int>",
+        type=int,
+        help="Minimal number of fragments in a cell for the cell to be kept. Default: 1",
+        default=1,
+    )
+    parser.add_argument(
+        "--min_cell",
+        metavar="<int>",
+        type=int,
+        help="Minimal number of cell in which a region is detected to be kept. Default: 1",
+        default=1,
+    )
+    parser.add_argument(
+        "--is_acc",
+        metavar="<int>",
+        type=int,
+        help="Minimal number of fragments for a region to be considered accessible. Default: 1",
+        default=1,
+    )
+    parser.add_argument(
+        "--check_for_duplicates",
+        help="If no duplicate counts are provided per row in the fragments file, whether to collapse duplicates. Default: False",
+        action="store_true",
+    )
+    parser.add_argument(
         "--use_automatic_thresholds",
         help="Use automatic thresholds for unique fragments in peaks and TSS enrichment score as calculated by Otsu's method",
         action="store_true",
@@ -134,6 +161,10 @@ def main():
         metrics=fragments_stats,
         valid_bc=barcodes,
         n_cpu=args.cpus,
+        min_frag=args.min_frag,
+        min_cell=args.min_cell,
+        is_acc=args.is_acc,
+        check_for_duplicates=args.check_for_duplicates,
         project=args.sample_id,
         split_pattern=args.split_pattern,
     )
@@ -141,6 +172,15 @@ def main():
     # save to pickle file
     with open(f"{args.sample_id}_cistopic_obj.pkl", "wb") as file:
         pickle.dump(cistopic_obj, file)
+    
+    # save good barcodes and thresholds
+    with open(f"{args.sample_id}_good_cells.txt", 'w') as file:
+        text = "\n".join(barcodes.tolist())
+        file.write(text)
+    
+    # save thresholds
+    with open(f"{args.sample_id}_thresholds.json", 'w') as file:
+        json.dump(thresholds, file)
 
     # create anndata object
     adata = ad.AnnData(

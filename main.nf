@@ -7,39 +7,53 @@ def helpMessage() {
     ===========================
     Peak Calling ATAC pipeline
     ===========================
-    This pipeline performs peak calling for ATAC data (only cisTopic option is available at the moment)
+    This pipeline performs peak calling for ATAC data using pyCisTopic
+    
     Usage: nextflow run main.nf [OPTIONS]
-        options:
-            --sample_table      specify a path to .csv file with sample names and path to the CellRanger-arc output dir (see example below)
-            --celltypes         specify a path .csv file with celltype annotation or a path to pseudobulk_peaks.csv file with selected celltypes for consensus peak calling
-            --callPeaks         if specified creates pseudobulks for celltypes specified in `--celltypes` for samples in `--sample_table`
-            --inferConsensus    if specified runs a consensus peak calling and outputs cisTopic object for each sample in `--sample_table`
-
+    
+    Required arguments:
+        --sample_table      Path to .csv file with sample names and paths to CellRanger-arc output directories
+        --celltypes         Path to .csv file with celltype annotation OR path to pseudobulk_peaks.tsv file with selected celltypes
+        --callPeaks         Run peak calling for provided celltypes (creates pseudobulks and calls peaks)
+        --inferConsensus    Run consensus peak calling and feature calculation (creates cisTopic objects)
+    
+    Optional arguments:
+        --output_dir        Output directory (default: 'results')
+        --help              Show this help message
+    
     Examples:
-        1. Perform peak calling
+        1. Perform peak calling only:
             nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
         
-        2. Infer consensus peaks and calculate features
+        2. Infer consensus peaks and calculate features (requires updated sample table from step 1):
             nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./example/pseudobulk_peaks.tsv
         
-        3. Perform peak calling, infer consensus peaks and calculate features
-            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes example/celltypes.csv
-
-    == samples.csv format ==
-    sample_id,outputdir
-    WS_wEMB13386884,/lustre/path/to/cellranger-arc/output/
-    WS_wEMB13386881,/lustre/path/to/cellranger-arc/output/
-
-    == celltypes.csv format ==
-    sample_id,barcode,celltype
-    WS_wEMB13386884,AGAAGGTGTAATTAGC-1,vasculature
-    WS_wEMB13386884,GATCGAGCACTTCATC-1,fibroblasts
-    WS_wEMB13386881,ACAACATGTGATCAGC-1,vasculature
-    WS_wEMB13386881,GAGCGGTCATGGAGGC-1,fibroblasts
+        3. Run complete pipeline (peak calling + consensus inference):
+            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
+    
+    Input file formats:
+        
+        sample_table.csv:
+        sample_id,outputdir
+        WS_wEMB13386884,/path/to/cellranger-arc/output/
+        WS_wEMB13386881,/path/to/cellranger-arc/output/
+        
+        celltypes.csv:
+        sample_id,barcode,celltype
+        WS_wEMB13386884,AGAAGGTGTAATTAGC-1,vasculature
+        WS_wEMB13386884,GATCGAGCACTTCATC-1,fibroblasts
+        WS_wEMB13386881,ACAACATGTGATCAGC-1,vasculature
+        WS_wEMB13386881,GAGCGGTCATGGAGGC-1,fibroblasts
+    
+    For more information, see: https://github.com/cellgeni/nf-atac
     ========================
     """.stripIndent()
 }
 
+def lowResourceError(task_name) {
+    log.warn "Not enough resources to perform ${task_name}"
+    return 'retry'
+}
 
 // WORKFLOW
 workflow {
@@ -59,9 +73,9 @@ workflow {
     celltypes = file( params.celltypes )
 
     // Load other files required for cisTopic pipeline
-    chromsizes = file( params.chromsizes )
-    blacklist = file( params.blacklist )
-    tss_bed = file( params.tss_bed )
+    chromsizes = channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], file( params.chromsizes ) ) )
+    blacklist = channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], file( params.blacklist ) ) )
+    tss_bed = channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], file( params.tss_bed ) ) )
 
     // Run PyCistopic pipeline
     PYCISTOPIC(
@@ -72,8 +86,14 @@ workflow {
         tss_bed,
         params.callPeaks,
         params.inferConsensus,
-        params.fragments_filename,
-        params.barcode_metrics_filename,
-        params.narrowPeaks_dir
     )
+
+    // Collect versions
+    PYCISTOPIC.out.versions
+        .splitText(by: 20)
+        .unique()
+        .collectFile(name: 'versions.yml', storeDir: params.output_dir, sort: true)
+        .subscribe { __ -> 
+            log.info("Versions saved to ${params.output_dir}/versions.yml")
+        }
 }

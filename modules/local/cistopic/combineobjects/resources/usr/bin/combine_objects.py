@@ -4,7 +4,6 @@ import os
 import pickle
 import glob
 import argparse
-import anndata as ad
 from pycisTopic.cistopic_class import merge, CistopicObject
 
 
@@ -23,29 +22,10 @@ def init_parser() -> argparse.ArgumentParser:
         help="Specify a path to the directory with cistopic objects",
     )
     parser.add_argument(
-        "--anndata",
-        metavar="<dir>",
-        type=str,
-        nargs="+",
-        help="Specify a path to the directory with anndata objects",
-    )
-    parser.add_argument(
-        "--combined_cistopic",
+        "--output",
         metavar="<file>",
         type=str,
         help="Specify a name to the file with combined cistopic object",
-    )
-    parser.add_argument(
-        "--combined_anndata",
-        metavar="<file>",
-        type=str,
-        help="Specify a name to the file with combined cistopic object",
-    )
-    parser.add_argument(
-        "--output_dir",
-        metavar="<dir>",
-        type=str,
-        help="Specify a path to output directory",
     )
     return parser
 
@@ -72,23 +52,8 @@ def main():
     cistopic_combined = merge(cistopic_objects)
 
     # write cistopic object to the file
-    with open(os.path.join(args.output_dir, args.combined_cistopic), "wb") as f:
+    with open(args.output, "wb") as f:
         pickle.dump(cistopic_combined, f)
-
-    # delete cistopic objects from memory
-    del cistopic_objects
-    del cistopic_combined
-
-    # combine anndata objects and write to disk
-    anndata_objects = [ad.read_h5ad(file) for file in args.anndata]
-    adata_combined = ad.concat(
-        adatas=anndata_objects,
-        join="outer",
-    )
-
-    adata_combined.write_h5ad(
-        os.path.join(args.output_dir, args.combined_anndata),
-    )
 
 
 if __name__ == "__main__":
