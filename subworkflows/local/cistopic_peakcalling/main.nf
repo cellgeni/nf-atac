@@ -97,7 +97,7 @@ workflow CISTOPIC_PEAKCALLING {
             "${meta.id},${meta.fragments},${meta.large_peaks},${meta.all_peaks},${path.toString()}"
         }
         .subscribe { __ -> 
-                log.info("Pseudobulk peak calling stats are saved to ${output_dir}/pseudobulk_peaks.tsv")
+                log.info("Pseudobulk peak calling stats are saved to ${output_dir}/pseudobulk_peaks.csv")
             }
     // Collect versions
     versions = CISTOPIC_COUNTFRAGMENTS.out.versions.first()
