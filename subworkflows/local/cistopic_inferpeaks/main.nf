@@ -45,7 +45,7 @@ workflow CISTOPIC_INFERPEAKS {
         // STEP 2: Perform QC
         CISTOPIC_QUALITYCONTROL(fragments, consensus, tss_bed)
 
-        // SPET 3: Create cisTopic object
+        // STEP 3: Create cisTopic object
         CISTOPIC_CREATEOBJECT(
             CISTOPIC_QUALITYCONTROL.out.qc,
             consensus,
