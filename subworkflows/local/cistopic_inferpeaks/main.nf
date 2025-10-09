@@ -77,8 +77,8 @@ workflow CISTOPIC_INFERPEAKS {
             .mix(
                 CISTOPIC_QUALITYCONTROL.out.versions.first(),
                 CISTOPIC_CREATEOBJECT.out.versions.first(),
-                CISTOPIC_COMBINEOBJECTS.out.versions.ifEmpty{ Channel.empty() },
-                ANNDATA_CONCAT.out.versions.ifEmpty{ Channel.empty() }
+                CISTOPIC_COMBINEOBJECTS.out.versions,
+                ANNDATA_CONCAT.out.versions
             )
         emit:
         consensus       = consensus
