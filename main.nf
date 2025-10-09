@@ -66,26 +66,29 @@ workflow {
         error "Please specify all of the arguments listed above"
     }
     
-    // Convert sample_table to path
-    sample_table = file( params.sample_table )
-
-    // Load celltype annotation file
-    celltypes = file( params.celltypes )
+    // Load files
+    sample_table     = params.sample_table ? Channel.value( file( params.sample_table, checkIfExists: true ) ): Channel.empty()
+    celltypes        = params.celltypes ? Channel.value( file( params.celltypes, checkIfExists: true ) ): Channel.empty()
+    pseudobulk_peaks = params.pseudobulk_peaks ? Channel.value( file( params.pseudobulk_peaks, checkIfExists: true ) ): Channel.empty()
+    atac_adata       = params.atac_adata ? Channel.value( file( params.atac_adata, checkIfExists: true ) ): Channel.empty()
 
     // Load other files required for cisTopic pipeline
-    chromsizes = channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], file( params.chromsizes ) ) )
-    blacklist = channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], file( params.blacklist ) ) )
-    tss_bed = channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], file( params.tss_bed ) ) )
+    chromsizes = Channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], file( params.chromsizes ) ) )
+    blacklist  = Channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], file( params.blacklist ) ) )
+    tss_bed    = Channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], file( params.tss_bed ) ) )
 
     // Run PyCistopic pipeline
     PYCISTOPIC(
         sample_table,
         celltypes,
+        pseudobulk_peaks,
+        atac_adata,
         chromsizes,
         blacklist,
         tss_bed,
         params.callPeaks,
         params.inferConsensus,
+        params.attachGEX
     )
 
     // Collect versions
