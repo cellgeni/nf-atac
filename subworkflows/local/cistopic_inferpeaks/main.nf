@@ -17,11 +17,11 @@ workflow CISTOPIC_INFERPEAKS {
         // Get fragment paths from sample table
         fragments = sample_table
             .splitCsv(header: true)
-            .map{ meta -> 
+            .map{ row -> 
                 [
-                    [id: meta.sample_id, fragments: meta.fragments],
-                    file( "${meta.filedir}/*fragments.tsv.gz" )[0],
-                    file( "${meta.filedir}/*fragments.tsv.gz.tbi" )[0]
+                    [id: row.sample_id, fragments: row.fragments],
+                    file( "${row.filedir}/*fragments.tsv.gz" )[0],
+                    file( "${row.filedir}/*fragments.tsv.gz.tbi" )[0]
                 ]
             }
 
@@ -80,11 +80,12 @@ workflow CISTOPIC_INFERPEAKS {
                 CISTOPIC_COMBINEOBJECTS.out.versions.ifEmpty{ Channel.empty() },
                 ANNDATA_CONCAT.out.versions.ifEmpty{ Channel.empty() }
             )
-
         emit:
-        consensus = consensus
-        cistopic  = cistopic_objects.sample.mix(CISTOPIC_COMBINEOBJECTS.out.pkl)
-        anndata   = anndata_objects.sample.mix(ANNDATA_CONCAT.out.h5ad)
-        versions  = versions
+        consensus       = consensus
+        cistopic        = CISTOPIC_CREATEOBJECT.out.pkl
+        anndata         = CISTOPIC_CREATEOBJECT.out.h5ad
+        concat_cistopic = cistopic_objects.sample.mix(CISTOPIC_COMBINEOBJECTS.out.pkl)
+        concat_anndata  = anndata_objects.sample.mix(ANNDATA_CONCAT.out.h5ad)
+        versions        = versions
 
 }
