@@ -12,9 +12,7 @@ workflow CISTOPIC_PEAKCALLING {
     main:
     // STEP1: Get barcode metrics
     // Read sample table and get barcode metrics path
-    barcode_metrics = Channel.fromPath(sample_table, checkIfExists: true)
-        // Read sample table
-        .splitCsv(header: true)
+    barcode_metrics = sample_table.splitCsv(header: true)
         // Get barcode metrics path
         .map{ row ->
             def barcode_metrics = file( "${row.filedir}/per_barcode_metrics.csv" )
