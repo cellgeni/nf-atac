@@ -2,6 +2,7 @@ include { CISTOPIC_INFERCONSENSUS } from '../../../modules/local/cistopic/inferc
 include { CISTOPIC_QUALITYCONTROL } from '../../../modules/local/cistopic/qualitycontrol'
 include { CISTOPIC_CREATEOBJECT } from '../../../modules/local/cistopic/createobject'
 include { CISTOPIC_COMBINEOBJECTS } from '../../../modules/local/cistopic/combineobjects'
+include { ANNDATA_ATTACHCELLTYPES as ANNDATA_ATTACHCELLTYPES_ATAC } from '../../../modules/local/anndata/attachcelltypes'
 include { ANNDATA_CONCAT } from '../../../modules/local/anndata/concat'
 
 
@@ -9,6 +10,7 @@ workflow CISTOPIC_INFERPEAKS {
     take:
         peaks
         sample_table
+        celltypes
         chromsizes
         blacklist
         tss_bed
@@ -52,27 +54,32 @@ workflow CISTOPIC_INFERPEAKS {
             blacklist
         )
         
-        cistopic_objects = CISTOPIC_CREATEOBJECT.out.pkl
+         CISTOPIC_CREATEOBJECT.out.pkl
             .toSortedList()
             .branch {
                 it ->
                 combine_objects: it.size() > 1
                 sample: true
             }
-        
-        anndata_objects = CISTOPIC_CREATEOBJECT.out.h5ad
+            .set { cistopic_objects}
+
+        // STEP 4: Attach celltype annotation
+        ANNDATA_ATTACHCELLTYPES_ATAC(CISTOPIC_CREATEOBJECT.out.h5ad, celltypes)
+
+        ANNDATA_ATTACHCELLTYPES_ATAC.out.h5ad
             .toSortedList()
             .branch {
                 it ->
                 combine_objects: it.size() > 1
                 sample: true
             }
+            .set { anndata_objects }
 
-        // STEP 4: Combine cisTopic objects if needed
-        CISTOPIC_COMBINEOBJECTS(cistopic_objects.combine_objects.transpose().toList())
-        ANNDATA_CONCAT(anndata_objects.combine_objects.transpose().toList())
+        // STEP 5: Combine cisTopic objects if needed
+        CISTOPIC_COMBINEOBJECTS(cistopic_objects.combine_objects.transpose().collect(flat: false))
+        ANNDATA_CONCAT(anndata_objects.combine_objects.transpose().collect(flat: false))
 
-        // STEP 5: Collect versions
+        // STEP 6: Collect versions
         versions = CISTOPIC_INFERCONSENSUS.out.versions
             .mix(
                 CISTOPIC_QUALITYCONTROL.out.versions.first(),

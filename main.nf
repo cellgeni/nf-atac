@@ -37,7 +37,7 @@ def helpMessage() {
             nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
         
         2. Infer consensus peaks and calculate features (requires updated sample table from step 1):
-            nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+            nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
         
         3. Attach GEX data to existing ATAC data:
             nextflow run main.nf --attachGEX --sample_table ./example/updated_sample_table.csv --celltypes ./example/celltypes.csv --atac_adata ./results/atac_anndata.csv
@@ -96,8 +96,8 @@ workflow {
     }
 
     // Check required arguments for consensus peak inference
-    if ( params.inferConsensus && (! params.sample_table || ! params.chromsizes || ! params.blacklist || ! params.tss_bed) ) {
-        error("Please provide --sample_table, --chromsizes, --blacklist and --tss_bed when using --inferConsensus")
+    if ( params.inferConsensus && (! params.sample_table || ! params.celltypes || ! params.chromsizes || ! params.blacklist || ! params.tss_bed) ) {
+        error("Please provide --sample_table, --celltypes, --chromsizes, --blacklist and --tss_bed when using --inferConsensus")
     }
 
     // Check required arguments for attaching GEX data
