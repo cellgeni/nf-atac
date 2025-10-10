@@ -90,7 +90,7 @@ workflow CISTOPIC_INFERPEAKS {
         emit:
         consensus       = consensus
         cistopic        = CISTOPIC_CREATEOBJECT.out.pkl
-        anndata         = CISTOPIC_CREATEOBJECT.out.h5ad
+        anndata         = ANNDATA_ATTACHCELLTYPES_ATAC.out.h5ad
         concat_cistopic = cistopic_objects.sample.mix(CISTOPIC_COMBINEOBJECTS.out.pkl)
         concat_anndata  = anndata_objects.sample.mix(ANNDATA_CONCAT.out.h5ad)
         versions        = versions
