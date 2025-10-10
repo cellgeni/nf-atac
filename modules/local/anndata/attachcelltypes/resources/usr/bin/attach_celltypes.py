@@ -250,6 +250,7 @@ def main():
     # Load AnnData object
     logging.info("Loading .h5 file to AnnData object")
     adata = sc.read_h5ad(args.h5ad_file)
+    logging.info(adata)
 
     # Load cell metadata
     logging.info("Loading cell metadata")
@@ -274,6 +275,7 @@ def main():
     obs_merged.set_index(obs_index_name, inplace=True)
     adata_metadata = adata[obs_merged.index]
     adata_metadata.obs = obs_merged
+    logging.info(adata_metadata)
 
     # Write AnnData object to .h5ad file
     logging.info("Writing AnnData object to .h5ad file")

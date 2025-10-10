@@ -8,7 +8,8 @@ process ANNDATA_ATTACHCELLTYPES {
     
     output:
     tuple val(meta), path("*.h5ad"), emit: h5ad
-    path 'versions.yml', emit: versions
+    path '.attach_celltypes.log'   , emit: log
+    path 'versions.yml'            , emit: versions
     
     script:
     barcode_column = task.ext.barcode_column ?: "obs_names"
@@ -19,6 +20,7 @@ process ANNDATA_ATTACHCELLTYPES {
         --sample_id ${meta.id} \
         --metadata ${metadata} \
         --barcode_column ${barcode_column} \
+        --logfile .attach_celltypes.log \
         --output $output
     
     cat <<-END_VERSIONS > versions.yml
