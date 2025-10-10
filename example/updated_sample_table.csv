@@ -1,4 +1,4 @@
-sample_id,filedir,fragments
+sample_id,path,fragments
 WS_wEMB13386878,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386878/raw/,730872409
 WS_wEMB13386879,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386879/raw/,1118846819
 WS_wEMB13386880,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386880/raw/,394747451
