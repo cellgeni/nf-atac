@@ -75,9 +75,12 @@ workflow CISTOPIC_INFERPEAKS {
             }
             .set { anndata_objects }
 
-        // STEP 5: Combine cisTopic objects if needed
-        CISTOPIC_COMBINEOBJECTS(cistopic_objects.combine_objects.transpose().collect(flat: false))
-        ANNDATA_CONCAT(anndata_objects.combine_objects.transpose().collect(flat: false))
+        // STEP 5: Combine cisTopic and AnnData objects
+        cistopic_combine = cistopic_objects.combine_objects.transpose().collect(flat: false)
+        CISTOPIC_COMBINEOBJECTS(cistopic_combine )
+
+        anndata_combine = anndata_objects.combine_objects.transpose().collect(flat: false)
+        ANNDATA_CONCAT(anndata_combine )
 
         // STEP 6: Collect versions
         versions = CISTOPIC_INFERCONSENSUS.out.versions
