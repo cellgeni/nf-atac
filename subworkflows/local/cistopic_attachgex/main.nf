@@ -28,7 +28,13 @@ workflow CISTOPIC_ATTACHGEX {
     ANNDATA_ATTACHCELLTYPES(ANNDATA_TOH5AD.out.h5ad, celltypes)
 
     // STEP 3: Attach GEX to ATAC
-    gex_atac_pairs = atac_adata.join(ANNDATA_ATTACHCELLTYPES.out.h5ad, failOnMismatch: true)
+
+    // Prepare the channels
+    atac_adata = atac_adata.map { meta, path -> tuple( [id: meta.id], path ) }
+    gex_adata = ANNDATA_ATTACHCELLTYPES.out.h5ad.map { meta, path -> tuple( [id: meta.id], path ) }
+    gex_atac_pairs = atac_adata.join(gex_adata, failOnMismatch: true)
+    
+    // Attach GEX to ATAC
     ANNDATA_COUPLEMULTIOME(gex_atac_pairs)
 
     // STEP 4: Collect files

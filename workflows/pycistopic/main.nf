@@ -19,7 +19,7 @@ workflow  PYCISTOPIC {
     main:
     versions         = Channel.empty()
     pseudobulk_peaks = pseudobulk_peaks.splitCsv(header: true, sep:',').map { row -> tuple( [id: row.celltype, fragments: row.fragments], file( row.path, checkIfExists: true ) ) }
-    atac_adata       = atac_adata.splitCsv(header: true, sep:'\t').map { row -> tuple( [id: row.sample_id], file( row.path ) ) }
+    atac_adata       = atac_adata.splitCsv(header: true, sep:',').map { row -> tuple( [id: row.sample_id], file( row.path ) ) }
 
     // Create pseudobulk, call peaks and update sample table
     if ( callPeaksFlag ) {
@@ -50,6 +50,7 @@ workflow  PYCISTOPIC {
             tss_bed
         )
         versions = versions.mix(CISTOPIC_INFERPEAKS.out.versions)
+        atac = CISTOPIC_INFERPEAKS.out.anndata
     }
 
     if ( attachGEXFlag ) {
@@ -57,10 +58,14 @@ workflow  PYCISTOPIC {
             updated_samples = sample_table
         }
 
+        if ( ! inferConsensusFlag ) {
+            atac = atac_adata
+        }
+
         CISTOPIC_ATTACHGEX(
             updated_samples,
             celltypes,
-            CISTOPIC_INFERPEAKS.out.anndata
+            atac
         )
 
         versions = versions.mix(CISTOPIC_ATTACHGEX.out.versions)
