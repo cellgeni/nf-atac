@@ -90,7 +90,7 @@ def init_parser() -> argparse.ArgumentParser:
         metavar="<val>",
         type=str,
         help="Specify a name for a cellranger-arc output directory column in sample table",
-        default="path",
+        default="filedir",
     )
     parser.add_argument(
         "--dropna",

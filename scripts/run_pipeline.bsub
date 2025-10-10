@@ -1,9 +1,0 @@
-#BSUB -G cellgeni
-#BSUB -q "basement"
-#BSUB -n 1
-#BSUB -M 4GB
-#BSUB -R "select[mem>4GB] rusage[mem=4GB]"
-#BSUB -o "logs/nfatacOutput%J.log"
-#BSUB -e "logs/nfatacError%J.log"
-
-nextflow run main.nf --callPeaks --inferConsensus --sample_table example/sample_table.csv --celltypes example/we_annotation.csv -resume

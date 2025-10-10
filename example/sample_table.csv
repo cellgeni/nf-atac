@@ -1,6 +1,6 @@
-sample_id,path
-WS_wEMB13400207,/lustre/scratch127/cellgen/cellgeni/tickets/tic-3968/data/raw/WS_wEMB13400207/cellranger-arc202_count_0a156f4fe5715f907a74622507163e68
-WS_wEMB13400208,/lustre/scratch127/cellgen/cellgeni/tickets/tic-3968/data/raw/WS_wEMB13400208/cellranger-arc202_count_43c2d8dd1eaf98b635896165fd98ae3a
-WS_wEMB13400209,/lustre/scratch127/cellgen/cellgeni/tickets/tic-3968/data/raw/WS_wEMB13400209/cellranger-arc202_count_04d2f704ab04607a427c3ba7d730a6af
-WS_wEMB13400212,/lustre/scratch127/cellgen/cellgeni/tickets/tic-3968/data/raw/WS_wEMB13400212/cellranger-arc202_count_1ea05b1b6b9bfbeeb2a737b82c2bb631
-WS_wEMB13400213,/lustre/scratch127/cellgen/cellgeni/tickets/tic-3968/data/raw/WS_wEMB13400213/cellranger-arc202_count_b874580392dc5100141b545c26b07117
+sample_id,filedir
+WS_wEMB13386878,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386878/raw/
+WS_wEMB13386879,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386879/raw/
+WS_wEMB13386880,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386880/raw/
+WS_wEMB13386881,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386881/raw/
+WS_wEMB13386882,/lustre/scratch126/cellgen/team205/lm25/regGen/data/whole_embryo/raw/WS_wEMB13386882/raw/

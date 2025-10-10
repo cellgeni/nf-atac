@@ -12,10 +12,12 @@ workflow CISTOPIC_PEAKCALLING {
     main:
     // STEP1: Get barcode metrics
     // Read sample table and get barcode metrics path
-    barcode_metrics = sample_table.splitCsv(header: true)
+    barcode_metrics = Channel.fromPath(sample_table, checkIfExists: true)
+        // Read sample table
+        .splitCsv(header: true)
         // Get barcode metrics path
         .map{ row ->
-            def barcode_metrics = file( "${row.path}/per_barcode_metrics.csv" )
+            def barcode_metrics = file( "${row.filedir}/per_barcode_metrics.csv" )
             tuple( [id: row.sample_id], barcode_metrics )
         }
         // Check if barcode metrics file exists
@@ -60,8 +62,8 @@ workflow CISTOPIC_PEAKCALLING {
         .map{ meta -> 
             [
                 [id: meta.sample_id, fragments: meta.fragments],
-                file( "${meta.path}/*fragments.tsv.gz" )[0],
-                file( "${meta.path}/*fragments.tsv.gz.tbi" )[0]
+                file( "${meta.filedir}/*fragments.tsv.gz" )[0],
+                file( "${meta.filedir}/*fragments.tsv.gz.tbi" )[0]
             ]
         }
         .collect(flat: false, sort: true)
