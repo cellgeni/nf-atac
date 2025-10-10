@@ -1,2 +1,2 @@
-sample_id,filedir
+sample_id,path
 pbmc10k,/lustre/scratch127/cellgen/cellgeni/aljes/atac-pipeline/pbmc/PBMC_10K/
