@@ -61,9 +61,6 @@ workflow {
     if (params.help) {
         helpMessage()
         System.exit(0)
-    } else if (params.sample_table == null || params.celltypes == null) {
-        helpMessage()
-        error "Please specify all of the arguments listed above"
     }
     
     // Load files
@@ -90,6 +87,21 @@ workflow {
         params.inferConsensus,
         params.attachGEX
     )
+
+    // Collect ATAC anndata object paths (if generated)
+    PYCISTOPIC.out.atac_anndata
+        .collectFile(
+            name: 'atac_anndata.csv',
+            storeDir: params.output_dir,
+            newLine: true,
+            seed: "sample_id,path",
+            sort: true
+        ) { meta, path ->
+            "${meta.id},${path.toString()}"
+        }
+        .subscribe { __ -> 
+            log.info("ATAC anndata paths saved to ${params.output_dir}/atac_anndata.csv")
+        }
 
     // Collect versions
     PYCISTOPIC.out.versions
