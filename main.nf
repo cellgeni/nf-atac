@@ -7,15 +7,26 @@ def helpMessage() {
     ===========================
     Peak Calling ATAC pipeline
     ===========================
-    This pipeline performs peak calling for ATAC data using pyCisTopic
+    This pipeline performs peak calling for ATAC data using pyCisTopic and supports multiome data integration
     
     Usage: nextflow run main.nf [OPTIONS]
     
     Required arguments:
+        :INPUT FILES:
         --sample_table      Path to .csv file with sample names and paths to CellRanger-arc output directories
-        --celltypes         Path to .csv file with celltype annotation OR path to pseudobulk_peaks.tsv file with selected celltypes
+        --celltypes         Path to .csv file with celltype annotation
+        --pseudobulk_peaks  Path to pseudobulk_peaks.csv (required when using --inferConsensus without --callPeaks)
+        --atac_adata        Path to atac_anndata.csv (required when using --attachGEX without --inferConsensus)
+        
+        :PIPELINE FILES:
+        --chromsizes       Path to chromsizes file (default: reference/hg38.chrom.sizes)
+        --blacklist        Path to blacklist file (default: reference/hg38-blacklist.v2.bed)
+        --tss_bed          Path to TSS bed file (default: reference/hg38_pycistopic_tss.bed)
+
+        :STEPS:
         --callPeaks         Run peak calling for provided celltypes (creates pseudobulks and calls peaks)
         --inferConsensus    Run consensus peak calling and feature calculation (creates cisTopic objects)
+        --attachGEX         Attach GEX data to ATAC data for multiome integration
     
     Optional arguments:
         --output_dir        Output directory (default: 'results')
@@ -26,17 +37,28 @@ def helpMessage() {
             nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
         
         2. Infer consensus peaks and calculate features (requires updated sample table from step 1):
-            nextflow run main.nf --inferConsensus --sample_table ./example/updated_sample_table.csv --celltypes ./example/pseudobulk_peaks.tsv
+            nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
         
-        3. Run complete pipeline (peak calling + consensus inference):
-            nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
+        3. Attach GEX data to existing ATAC data:
+            nextflow run main.nf --attachGEX --sample_table ./example/updated_sample_table.csv --celltypes ./example/celltypes.csv --atac_adata ./results/atac_anndata.csv
+        
+        4. Infer consensus peaks and attach GEX in one go:
+            nextflow run main.nf --inferConsensus --attachGEX --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+
+        5. Run complete pipeline (peak calling + consensus inference + GEX attachment):
+            nextflow run main.nf --callPeaks --inferConsensus --attachGEX --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
     
     Input file formats:
         
-        sample_table.csv:
-        sample_id,outputdir
+        sample_table.csv (basic format):
+        sample_id,path
         WS_wEMB13386884,/path/to/cellranger-arc/output/
         WS_wEMB13386881,/path/to/cellranger-arc/output/
+        
+        updated_sample_table.csv (with fragment counts):
+        sample_id,path,fragments
+        WS_wEMB13386884,/path/to/cellranger-arc/output/,730872409
+        WS_wEMB13386881,/path/to/cellranger-arc/output/,1118846819
         
         celltypes.csv:
         sample_id,barcode,celltype
@@ -44,6 +66,11 @@ def helpMessage() {
         WS_wEMB13386884,GATCGAGCACTTCATC-1,fibroblasts
         WS_wEMB13386881,ACAACATGTGATCAGC-1,vasculature
         WS_wEMB13386881,GAGCGGTCATGGAGGC-1,fibroblasts
+        
+        atac_anndata.csv:
+        sample_id,path
+        WS_wEMB13386884,/path/to/WS_wEMB13386884.h5ad
+        WS_wEMB13386881,/path/to/WS_wEMB13386881.h5ad
     
     For more information, see: https://github.com/cellgeni/nf-atac
     ========================
@@ -61,6 +88,31 @@ workflow {
     if (params.help) {
         helpMessage()
         System.exit(0)
+    }
+
+    // Check required arguments for peak calling
+    if ( params.callPeaks && (! params.sample_table || ! params.celltypes || ! params.chromsizes) ) {
+        error("Please provide --sample_table, --celltypes and --chromsizes when using --callPeaks")
+    }
+
+    // Check required arguments for consensus peak inference
+    if ( params.inferConsensus && (! params.sample_table || ! params.chromsizes || ! params.blacklist || ! params.tss_bed) ) {
+        error("Please provide --sample_table, --chromsizes, --blacklist and --tss_bed when using --inferConsensus")
+    }
+
+    // Check required arguments for attaching GEX data
+    if ( params.attachGEX && (! params.sample_table || ! params.celltypes) ) {
+        error("Please provide --sample_table and --celltypes when using --attachGEX")
+    }
+
+    // Check required arguments for INFERPEAKS without CALLPEAKS
+    if ( params.inferConsensus && ! params.callPeaks && ! params.pseudobulk_peaks ) {
+        error("Please provide --pseudobulk_peaks when using --inferConsensus without --callPeaks")
+    }
+
+    // Check required arguments for ATTACHGEX without INFERPEAKS
+    if ( params.attachGEX && ! params.inferConsensus && ! params.atac_adata ) {
+        error("Please provide --atac_adata when using --attachGEX without --inferConsensus")
     }
     
     // Load files
