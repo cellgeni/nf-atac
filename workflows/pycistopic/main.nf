@@ -17,8 +17,8 @@ workflow  PYCISTOPIC {
     attachGEXFlag
     
     main:
-    versions = Channel.empty()
-    pseudobulk_peaks = pseudobulk_peaks.splitCsv(skip:1, sep:'\t')
+    versions         = Channel.empty()
+    pseudobulk_peaks = pseudobulk_peaks.splitCsv(header: true, sep:',').map { row -> tuple( [id: row.celltype, fragments: row.fragments], file( row.path, checkIfExists: true ) ) }
     atac_adata       = atac_adata.splitCsv(header: true, sep:'\t').map { row -> tuple( [id: row.sample_id], file( row.path ) ) }
 
     // Create pseudobulk, call peaks and update sample table
@@ -38,8 +38,8 @@ workflow  PYCISTOPIC {
     if ( inferConsensusFlag ) {
 
         if ( ! callPeaksFlag ) {
-            updated_samples = Channel.fromPath(sample_table, checkIfExists: true)
-            peak_metadata = Channel.fromPath(celltypes, checkIfExists: true).splitCsv(skip:1, sep:'\t')
+            updated_samples = sample_table
+            peak_metadata = pseudobulk_peaks
         }
 
         CISTOPIC_INFERPEAKS(
