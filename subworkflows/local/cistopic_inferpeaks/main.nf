@@ -20,8 +20,8 @@ workflow CISTOPIC_INFERPEAKS {
             .map{ row -> 
                 [
                     [id: row.sample_id, fragments: row.fragments],
-                    file( "${row.filedir}/*fragments.tsv.gz" )[0],
-                    file( "${row.filedir}/*fragments.tsv.gz.tbi" )[0]
+                    file( "${row.path}/*fragments.tsv.gz" )[0],
+                    file( "${row.path}/*fragments.tsv.gz.tbi" )[0]
                 ]
             }
 
