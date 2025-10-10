@@ -13,7 +13,7 @@ workflow CISTOPIC_ATTACHGEX {
     mtx_dirs = sample_table
         .splitCsv(header: true)
         .map{ row ->
-            def mtx_path = file( "${row.path}/filtered_feature_bc_matrix" )
+            def mtx_path = file( "${row.path}/raw_feature_bc_matrix" )
             def meta = [id: row.sample_id, fragments: row.fragments ? row.fragments : null]
             if ( ! mtx_path.exists() ) {
                 error "Matrix directory not found: ${mtx_path}. Please check your sample_table."
