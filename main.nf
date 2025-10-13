@@ -1,6 +1,11 @@
 // IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
 
+def lowResourceError(task_name) {
+    log.warn "Not enough resources to perform ${task_name}"
+    return 'retry'
+}
+
 // HELP MESSAGE
 def helpMessage() {
     log.info"""
@@ -75,11 +80,6 @@ def helpMessage() {
     For more information, see: https://github.com/cellgeni/nf-atac
     ========================
     """.stripIndent()
-}
-
-def lowResourceError(task_name) {
-    log.warn "Not enough resources to perform ${task_name}"
-    return 'retry'
 }
 
 // WORKFLOW
