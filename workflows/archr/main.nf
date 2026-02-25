@@ -1,6 +1,7 @@
 include { preprocess_sample } from '../../modules/archr'
 include { get_gene_scores } from '../../modules/archr'
 include { make_h5ad } from '../../modules/archr'
+include { call_peaks } from '../../modules/archr'
 
 workflow  ARCHR {
     take:
@@ -33,18 +34,22 @@ workflow  ARCHR {
           params.genome,
           samples.count()
         )
+        
+        mtx_ch = gene_scores.matrix_parts
 
-        make_h5ad(gene_scores.mtx,
-                  gene_scores.obs,
-                  gene_scores.var,
-                  'gene_scores.h5ad',
-                  samples.count())
-
-        /*
         if(params.celltypes != null){
-          call_peaks(combine_samples.out,
+          peaks = call_peaks(gene_scores.arrows,
                      Channel.fromPath( params.celltypes ),
                      params.genome,
-                     params.blacklist)
-        }*/
+                     samples.count())
+          mtx_ch = mtx_ch.concat(peaks.matrix_parts)
+        }
+        
+        mtx_ch.view()
+
+
+        make_h5ad(mtx_ch,
+                  samples.count())
+                  
+                  
 }

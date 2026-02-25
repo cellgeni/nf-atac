@@ -5,7 +5,6 @@ def lowMemoryError(sample, task_name) {
 }
 
 process preprocess_sample {
-  publishDir "${params.output_dir}/arrows/", mode: 'copy'
   input:
     tuple val(sample_id), path(fragments), path(fragments_index)
     val(min_counts)
@@ -30,15 +29,18 @@ process preprocess_sample {
 }
 
 process get_gene_scores {
+  publishDir "${params.output_dir}/arrows_all/", mode: 'copy', pattern: '*.arrow'
   input:
     tuple val(sample_id), path(arrow_file)
     val(genome)
     val(n_samples)
 
   output:
-    path("gene_scores.mtx"), emit: mtx
-    path("gene_scores_obs.csv"), emit: obs
-    path("gene_scores_var.csv"), emit: var
+    tuple path("gene_scores.mtx"), 
+          path("gene_scores_obs.csv"), 
+          path("gene_scores_var.csv"),
+          val("gene_scores.h5ad"), emit: matrix_parts
+    tuple val(sample_id), path(arrow_file), emit: arrows
   
   script:
   """
@@ -53,10 +55,7 @@ process get_gene_scores {
 process make_h5ad{
   publishDir "${params.output_dir}/", mode: 'copy'
   input:
-    path(mtx)
-    path(obs)
-    path(var)
-    val(out_h5ad)
+    tuple path(mtx),path(obs),path(var),val(out_h5ad)
     val(n_samples)
 
   output: 
@@ -72,48 +71,30 @@ process make_h5ad{
   """
 }
 
-/*process combine_samples {
-  publishDir "${params.output_dir}/full_adatas/", mode: 'copy'
-  
-  input:
-    tuple val(sample_id), path(h5ad_in, stageAs: "anndatas/*")
-    val(n_features)
-    val(genome)
-
-  output:
-    tuple path("full.h5ads"),path("gene_matrix.h5ad"),path("anndatas")
-  
-  script:
-  """
-  combine_samples.py \
-   --sample_id ${sample_id.join(' ')} \
-   --h5ad_in $h5ad_in \
-   --n_features $n_features \
-   --genome $genome \
-   --postprocess
-  """
-}
-
 process call_peaks {
-  publishDir "${params.output_dir}/", mode: 'copy'
-  
+  publishDir "${params.output_dir}/arrows_sub/", mode: 'copy', pattern: '*.arrow'
   input:
-    tuple path(h5ads),path(gene_matrix),path(anndatas, stageAs: "anndatas")
+    tuple val(sample_id), path(arrow_file, stageAs: 'input_arrows/*')
     path(celltype_file)
     val(genome)
-    path(blacklist)
+    val(n_samples)
 
   output:
-    path('subset_adatas')
+    tuple path("peak2cell.mtx"),
+          path("peak2cell_obs.csv"),
+          path("peak2cell_var.csv"),
+          val("peak2cell.h5ad"), emit: matrix_parts
+    path('*.arrow')
   
   script:
   """
-  call_peaks.py \
-   --h5ad_file $h5ads \
-   --celltype_file $celltype_file \
-   --genome $genome \
-   --blacklist $blacklist \
-   --n_jobs 20
+  call_peaks.R \
+   --arrow ${arrow_file.join(' ')} \
+   --celltype_csv ${celltype_file} \
+   --out_base peak2cell \
+   --nthreads 8 \
+   --genome $genome
+
+   mv arrows/ArrowFiles/*arrow ./
   """
 }
-*/

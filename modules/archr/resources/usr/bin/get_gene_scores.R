@@ -36,7 +36,8 @@ get_gene_scores = function(arrows){
     prj = ArchRProject(
         ArrowFiles = arrows, 
         outputDirectory = 'tmp',
-        copyArrows = FALSE
+        copyArrows = FALSE,
+        showLogo = FALSE
     )
 
     gene_scores = getMatrixFromProject(prj,useMatrix = 'GeneScoreMatrix')
