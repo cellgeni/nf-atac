@@ -45,6 +45,7 @@ workflow  PYCISTOPIC {
         CISTOPIC_INFERPEAKS(
             peak_metadata,
             updated_samples,
+            celltypes,
             chromsizes,
             blacklist,
             tss_bed

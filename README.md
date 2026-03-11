@@ -214,7 +214,7 @@ results/
 ### 2. Infer consensus peaks and calculate features
 To run consensus peak calling and feature calculation you need to specify an **updated sample table** generated on previous step (it is essential to use updated table with fragment counts to set appropriate memory limits for jobs) and **pseudobulk peaks table** generated on previous step with selected celltypes:
 ```shell
-nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
 ```
 
 This will create a `consensus_peaks.bed` file, `cisTopic` and `.h5ad` objects for each sample and combined `cisTopic` and `.h5ad` objects for whole dataset:
