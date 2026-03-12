@@ -1,11 +1,6 @@
 // IMPORT SUBWORKFLOWS
 include { PYCISTOPIC } from './workflows/pycistopic/main'
 
-def lowResourceError(task_name) {
-    log.warn "Not enough resources to perform ${task_name}"
-    return 'retry'
-}
-
 // HELP MESSAGE
 def helpMessage() {
     log.info"""
