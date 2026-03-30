@@ -108,15 +108,26 @@ def init_parser() -> argparse.ArgumentParser:
         help="Pattern to split cell barcode from sample id. Default: '___'",
         default="___",
     )
+    parser.add_argument(
+        "--filter_low_quality_cells",
+        help="Whether to filter low quality cells based on QC metrics. Default: False",
+        action="store_true",
+    )
     return parser
 
 
-def read_metrics(qc_dir: str, sample_id: str, barcodes: ndarray) -> DataFrame:
+def read_metrics(
+    qc_dir: str,
+    sample_id: str,
+    barcodes: ndarray,
+    filter_low_quality_cells: bool = False,
+) -> DataFrame:
     """
     Read QC metrics from <sample_id>.fragments_stats_per_cb.parquet file
     qc_dir (str): directory with QC results
     sample_id (str): sample identifier
     barcodes (List[str]): a list of barcodes that passed filtering
+    filter_low_quality_cells (bool): whether to filter low quality cells
     """
     # get file's path
     fragments_stats_file = os.path.join(
@@ -131,7 +142,10 @@ def read_metrics(qc_dir: str, sample_id: str, barcodes: ndarray) -> DataFrame:
     # read data and filter barcodes
     fragments_stats = read_parquet(fragments_stats_file, engine="pyarrow")
     fragments_stats = fragments_stats.set_index("CB")
-    fragments_stats = fragments_stats.loc[barcodes].copy()
+    fragments_stats["passed_qc"] = False
+    fragments_stats.loc[barcodes, "passed_qc"] = True
+    if filter_low_quality_cells:
+        fragments_stats = fragments_stats.loc[fragments_stats["passed_qc"]].copy()
     return fragments_stats
 
 
@@ -140,7 +154,7 @@ def main():
     parser = init_parser()
     args = parser.parse_args()
 
-    # filter low quality cells
+    # Get barcodes passing QC thresholds and the thresholds used for filtering
     barcodes, thresholds = get_barcodes_passing_qc_for_sample(
         sample_id=args.sample_id,
         pycistopic_qc_output_dir=args.qc_dir,
@@ -151,7 +165,12 @@ def main():
     )
 
     # read fragments stats
-    fragments_stats = read_metrics(args.qc_dir, args.sample_id, barcodes)
+    fragments_stats = read_metrics(
+        args.qc_dir,
+        args.sample_id,
+        barcodes,
+        filter_low_quality_cells=args.filter_low_quality_cells,
+    )
 
     # create a cistopic object
     cistopic_obj = create_cistopic_object_from_fragments(
@@ -159,7 +178,7 @@ def main():
         path_to_regions=args.consensus,
         path_to_blacklist=args.blacklist,
         metrics=fragments_stats,
-        valid_bc=barcodes,
+        valid_bc=None,
         n_cpu=args.cpus,
         min_frag=args.min_frag,
         min_cell=args.min_cell,
@@ -172,14 +191,14 @@ def main():
     # save to pickle file
     with open(f"{args.sample_id}_cistopic_obj.pkl", "wb") as file:
         pickle.dump(cistopic_obj, file)
-    
+
     # save good barcodes and thresholds
-    with open(f"{args.sample_id}_good_cells.txt", 'w') as file:
+    with open(f"{args.sample_id}_good_cells.txt", "w") as file:
         text = "\n".join(barcodes.tolist())
         file.write(text)
-    
+
     # save thresholds
-    with open(f"{args.sample_id}_thresholds.json", 'w') as file:
+    with open(f"{args.sample_id}_thresholds.json", "w") as file:
         json.dump(thresholds, file)
 
     # create anndata object
@@ -188,6 +207,7 @@ def main():
         obs=cistopic_obj.cell_data.infer_objects(),
         var=cistopic_obj.region_data.infer_objects(),
         layers={"binary": cistopic_obj.binary_matrix.T},
+        uns={"thresholds": thresholds},
     )
 
     # save to h5ad file
