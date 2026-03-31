@@ -164,6 +164,13 @@ def main():
         use_automatic_thresholds=args.use_automatic_thresholds,
     )
 
+    # Get fully automated thresholds
+    otsu_barcodes, otsu_thresholds = get_barcodes_passing_qc_for_sample(
+        sample_id=args.sample_id,
+        pycistopic_qc_output_dir=args.qc_dir,
+        use_automatic_thresholds=args.use_automatic_thresholds,
+    )
+
     # read fragments stats
     fragments_stats = read_metrics(
         args.qc_dir,
@@ -207,7 +214,7 @@ def main():
         obs=cistopic_obj.cell_data.infer_objects(),
         var=cistopic_obj.region_data.infer_objects(),
         layers={"binary": cistopic_obj.binary_matrix.T},
-        uns={"thresholds": thresholds},
+        uns={"qc_thresholds": thresholds, "otsu_thresholds": otsu_thresholds},
     )
 
     # save to h5ad file
