@@ -21,6 +21,7 @@ process ANNDATA_ATTACHCELLTYPES {
         --metadata ${metadata} \
         --barcode_column ${barcode_column} \
         --logfile .attach_celltypes.log \
+        --how left \
         --output $output
     
     cat <<-END_VERSIONS > versions.yml
