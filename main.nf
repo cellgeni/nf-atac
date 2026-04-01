@@ -132,7 +132,8 @@ workflow {
         tss_bed,
         params.callPeaks,
         params.inferConsensus,
-        params.attachGEX
+        params.attachGEX,
+        params.cistopic.gex_filtered
     )
 
     // Collect ATAC anndata object paths (if generated)
@@ -151,10 +152,11 @@ workflow {
         }
 
     // Collect versions
+    def versions_header = "\"NF-ATAC\":\n    name: ${workflow.manifest.name}\n    version: ${workflow.manifest.version}\n    description: \"${workflow.manifest.description}\"\n"
     PYCISTOPIC.out.versions
         .splitText(by: 20)
         .unique()
-        .collectFile(name: 'versions.yml', storeDir: params.output_dir, sort: true)
+        .collectFile(name: 'versions.yml', storeDir: params.output_dir, sort: true, seed: versions_header)
         .subscribe { __ -> 
             log.info("Versions saved to ${params.output_dir}/versions.yml")
         }

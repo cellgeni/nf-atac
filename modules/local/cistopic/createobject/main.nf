@@ -24,8 +24,7 @@ process CISTOPIC_CREATEOBJECT {
         --consensus $consensus \\
         --blacklist $blacklist \\
         --qc_dir $qc \\
-        --cpus $task.cpus \\
-        --use_automatic_thresholds
+        --cpus $task.cpus
     
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

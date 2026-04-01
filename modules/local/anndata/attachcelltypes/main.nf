@@ -12,10 +12,12 @@ process ANNDATA_ATTACHCELLTYPES {
     path 'versions.yml'            , emit: versions
     
     script:
+     def args = task.ext.args ?: '--how left'
     barcode_column = task.ext.barcode_column ?: "obs_names"
     output = task.ext.output ?: "${meta.id}.h5ad"
     """
     attach_celltypes.py \
+        ${args} \
         --h5ad_file ${h5ad} \
         --sample_id ${meta.id} \
         --metadata ${metadata} \
