@@ -111,15 +111,15 @@ workflow {
     }
     
     // Load files
-    sample_table     = params.sample_table ? Channel.value( file( params.sample_table, checkIfExists: true ) ): Channel.empty()
-    celltypes        = params.celltypes ? Channel.value( file( params.celltypes, checkIfExists: true ) ): Channel.empty()
-    pseudobulk_peaks = params.pseudobulk_peaks ? Channel.value( file( params.pseudobulk_peaks, checkIfExists: true ) ): Channel.empty()
-    atac_adata       = params.atac_adata ? Channel.value( file( params.atac_adata, checkIfExists: true ) ): Channel.empty()
+    sample_table     = params.sample_table ? channel.value( file( params.sample_table, checkIfExists: true ) ): channel.empty()
+    celltypes        = params.celltypes ? channel.value( file( params.celltypes, checkIfExists: true ) ): channel.empty()
+    pseudobulk_peaks = params.pseudobulk_peaks ? channel.value( file( params.pseudobulk_peaks, checkIfExists: true ) ): channel.empty()
+    atac_adata       = params.atac_adata ? channel.value( file( params.atac_adata, checkIfExists: true ) ): channel.empty()
 
     // Load other files required for cisTopic pipeline
-    chromsizes = Channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], file( params.chromsizes ) ) )
-    blacklist  = Channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], file( params.blacklist ) ) )
-    tss_bed    = Channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], file( params.tss_bed ) ) )
+    chromsizes = channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], file( params.chromsizes ) ) )
+    blacklist  = channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], file( params.blacklist ) ) )
+    tss_bed    = channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], file( params.tss_bed ) ) )
 
     // Run PyCistopic pipeline
     PYCISTOPIC(
