@@ -15,6 +15,7 @@ workflow  PYCISTOPIC {
     callPeaksFlag
     inferConsensusFlag
     attachGEXFlag
+    gex_filtered
     
     main:
     versions         = Channel.empty()
@@ -66,7 +67,8 @@ workflow  PYCISTOPIC {
         CISTOPIC_ATTACHGEX(
             updated_samples,
             celltypes,
-            atac
+            atac,
+            gex_filtered
         )
 
         versions = versions.mix(CISTOPIC_ATTACHGEX.out.versions)

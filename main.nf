@@ -132,7 +132,8 @@ workflow {
         tss_bed,
         params.callPeaks,
         params.inferConsensus,
-        params.attachGEX
+        params.attachGEX,
+        params.cistopic.gex_filtered
     )
 
     // Collect ATAC anndata object paths (if generated)
