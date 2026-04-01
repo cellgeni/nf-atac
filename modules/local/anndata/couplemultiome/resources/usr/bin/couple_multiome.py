@@ -102,6 +102,15 @@ def main():
     atac_adata = ad.read_h5ad(args.atac)
     logging.info(atac_adata)
 
+    # Create MuData object
+    logging.info("Creating MuData object")
+    mdata = md.MuData({"gex": gex_adata, "atac": atac_adata})
+    logging.info(mdata)
+
+    # Save MuData object
+    logging.info("Saving MuData object")
+    mdata.write_h5mu(f"{args.prefix}.h5mu")
+
     # Subset barcodes to intersection
     logging.info("Subsetting barcodes to intersection")
     common_barcodes = gex_adata.obs_names.intersection(atac_adata.obs_names)
@@ -109,16 +118,10 @@ def main():
     atac_adata = atac_adata[common_barcodes].copy()
     logging.info("Number of common barcodes: %s", common_barcodes.shape[0])
 
-    # Create MuData object
-    logging.info("Creating MuData object")
-    mdata = md.MuData({"gex": gex_adata, "atac": atac_adata}, obs_names=common_barcodes)
-    logging.info(mdata)
-
-    # Save all objects
+    # Save AnnData objects
     logging.info("Saving objects")
-    gex_adata.write_h5ad(f"{args.prefix}_gex.h5ad")
-    atac_adata.write_h5ad(f"{args.prefix}_atac.h5ad")
-    mdata.write_h5mu(f"{args.prefix}_multiome.h5mu")
+    gex_adata.write_h5ad(f"{args.prefix}_sharedbarcodes_gex.h5ad")
+    atac_adata.write_h5ad(f"{args.prefix}_sharedbarcodes_atac.h5ad")
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ process ANNDATA_COUPLEMULTIOME {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}_coupled"
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
     couple_multiome.py \
             --gex ${gex} \
@@ -36,11 +36,11 @@ process ANNDATA_COUPLEMULTIOME {
 
     stub:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}_coupled"
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch .couple_multiome.log
-    touch ${prefix}_gex.h5ad
-    touch ${prefix}_atac.h5ad
+    touch ${prefix}_sharedbarcodes_gex.h5ad
+    touch ${prefix}_sharedbarcodes_atac.h5ad
     touch ${prefix}.h5mu
 
     cat <<-END_VERSIONS > versions.yml
