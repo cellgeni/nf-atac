@@ -91,12 +91,20 @@ This pipeline performs peak calling for ATAC-seq data using pyCisTopic. It suppo
 #### cisTopic Object Creation
 | Parameter                             | Default | Description                                            |
 | ------------------------------------- | ------- | ------------------------------------------------------ |
-| `--cistopic.min_frag`                 | `1`     | Minimum fragments per peak for inclusion               |
-| `--cistopic.min_cell`                 | `1`     | Minimum cells per peak for inclusion                   |
-| `--cistopic.is_acc`                   | `1`     | Whether data is accessibility data (1=yes, 0=no)       |
+| `--cistopic.min_frag`                 | `0`     | Minimum fragments per peak for inclusion               |
+| `--cistopic.min_cell`                 | `0`     | Minimum cells per peak for inclusion                   |
+| `--cistopic.is_acc`                   | `0`     | Whether data is accessibility data (1=yes, 0=no)       |
 | `--cistopic.split_pattern`            | `'___'` | Pattern for splitting cell identifiers                 |
 | `--cistopic.check_for_duplicates`     | `true`  | Check for duplicate peaks in consensus                 |
 | `--cistopic.use_automatic_thresholds` | `true`  | Use automatic QC thresholds based on data distribution |
+| `--cistopic.filter_low_quality_cells` | `false` | Keep only barcodes that pass QC thresholds             |
+
+#### AnnData Attachment and GEX Integration
+| Parameter                           | Default | Description                                                                  |
+| ----------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `--cistopic.annotated_only_atac`    | `false` | Keep only annotated cells in ATAC AnnData attachment (`--how inner`)         |
+| `--cistopic.gex_filtered`           | `true`  | Use `filtered_feature_bc_matrix`; set `false` to use `raw_feature_bc_matrix` |
+| `--cistopic.annotated_only_gex`     | `false` | Keep only annotated cells in GEX AnnData attachment (`--how inner`)          |
 
 ### Parameter Usage Examples
 ```bash
@@ -121,6 +129,10 @@ nextflow run main.nf --callPeaks --inferConsensus --attachGEX --sample_table sam
 # Attach GEX data to existing ATAC data
 nextflow run main.nf --attachGEX --sample_table updated_sample.csv --celltypes celltypes.csv \
   --atac_adata atac_anndata.csv
+
+# Use raw CellRanger matrices instead of filtered_feature_bc_matrix
+nextflow run main.nf --attachGEX --sample_table updated_sample.csv --celltypes celltypes.csv \
+  --atac_adata atac_anndata.csv --cistopic.gex_filtered false
 ```
 
 ### Compute Resources
@@ -222,18 +234,21 @@ This will create a `consensus_peaks.bed` file, `cisTopic` and `.h5ad` objects fo
 results/
 ├── consensus_peaks.bed # consensus peaks
 ├── combined_cistopic_object.pkl
-├── combined.h5ad
+├── combined_anndata_object.h5ad
 ├── log/
 │   └── inferconsensus.log
+├── anndata/
+│   ├── WS_wEMB13400228/
+│   │   └── WS_wEMB13400228_atac.h5ad
+│   └── WS_wEMB13400229/
+│       └── WS_wEMB13400229_atac.h5ad
 └── cistopic/
     ├── WS_wEMB13400228/
     │   ├── qc/
-    │   ├── WS_wEMB13400228_cistopic_obj.pkl
-    │   └── WS_wEMB13400228.h5ad
+    │   └── WS_wEMB13400228_cistopic_obj.pkl
     └── WS_wEMB13400229/
         ├── qc/
-        ├── WS_wEMB13400229_cistopic_obj.pkl
-        └── WS_wEMB13400229.h5ad
+        └── WS_wEMB13400229_cistopic_obj.pkl
 ```
 
 ### 3. Attach GEX data to ATAC data
@@ -254,14 +269,19 @@ This will create multiome objects (.h5mu) and combined AnnData objects (.h5ad) w
 results/
 ├── anndata/
 │   ├── WS_wEMB13400228/
-│   │   ├── WS_wEMB13400228_coupled.h5mu
-│   │   └── WS_wEMB13400228_coupled.h5ad
+│   │   ├── WS_wEMB13400228.h5mu
+│   │   ├── WS_wEMB13400228_sharedbarcodes_gex.h5ad
+│   │   └── WS_wEMB13400228_sharedbarcodes_atac.h5ad
 │   └── WS_wEMB13400229/
-│       ├── WS_wEMB13400229_coupled.h5mu
-│       └── WS_wEMB13400229_coupled.h5ad
+│       ├── WS_wEMB13400229.h5mu
+│       ├── WS_wEMB13400229_sharedbarcodes_gex.h5ad
+│       └── WS_wEMB13400229_sharedbarcodes_atac.h5ad
 └── log/
     └── attachgex.log
 ```
+
+By default the GEX step reads CellRanger `filtered_feature_bc_matrix` directories.
+Set `--cistopic.gex_filtered false` to use `raw_feature_bc_matrix` instead.
 
 ### 4. Infer consensus peaks and attach GEX in one go
 To run consensus peak inference and GEX attachment together:
