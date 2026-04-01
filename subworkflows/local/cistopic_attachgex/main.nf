@@ -11,7 +11,7 @@ workflow CISTOPIC_ATTACHGEX {
 
     main:
     // STEP 0: Get mtx paths from sample table
-    def filt_type = params.cistopic.gex_filtered ? "filtered" : "raw"
+    def filt_type = gex_filtered ? "filtered" : "raw"
     mtx_dirs = sample_table
         .splitCsv(header: true)
         .map{ row ->
