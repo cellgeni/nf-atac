@@ -269,7 +269,7 @@ def subsample_celltypes(
     difference = set(samples).difference(samples_in_annotation)
     if difference:
         sample_string = ",".join(difference)
-        raise DataError(
+        logging.warning(
             f"There are no {sample_string} samples in celltype annotation file"
         )
     # subsample entries from sample set
