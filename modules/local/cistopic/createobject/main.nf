@@ -17,7 +17,7 @@ process CISTOPIC_CREATEOBJECT {
     script:
     args = task.ext.args ?: ''
     """
-    create_cistopic.py \\
+    create_cistopic_optimized.py \\
         $args \\
         --sample_id ${meta.id} \\
         --fragments $fragments \\
