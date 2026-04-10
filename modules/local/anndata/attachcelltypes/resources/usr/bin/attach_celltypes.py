@@ -6,6 +6,7 @@ import argparse
 import anndata as an
 import scanpy as sc
 import pandas as pd
+import numpy as np
 
 
 class ColoredFormatter(logging.Formatter):
@@ -184,8 +185,7 @@ def validate_metadata(metadata: pd.DataFrame, sample_id: str) -> None:
     # Check if sample_id column contains sample_id given in the argument
     if sample_id not in metadata["sample_id"].unique():
         error_msg = f"Sample ID '{sample_id}' not found in metadata. Please check the input metadata file"
-        logging.error(error_msg)
-        raise ValueError(error_msg)
+        logging.warning(error_msg)
 
     # Check if barcode column contains any NaN values
     if metadata["barcode"].isnull().any():
@@ -266,16 +266,24 @@ def main():
 
     # Merge metadata with obs
     logging.info("Merging metadata with obs")
-    obs_merged = merge_metadata(
-        obs, metadata, barcode_column, sample_id_column, args.sample_id, args.how
-    )
+    if (metadata[sample_id_column] == args.sample_id).any():
+        obs_merged = merge_metadata(
+            obs, metadata, barcode_column, sample_id_column, args.sample_id, args.how
+        )
 
-    # Update AnnData's .obs with merged DataFrame
-    logging.info("Updating AnnData's .obs with merged DataFrame")
-    obs_merged.set_index(obs_index_name, inplace=True)
-    adata_metadata = adata[obs_merged.index]
-    adata_metadata.obs = obs_merged
-    logging.info(adata_metadata)
+        # Update AnnData's .obs with merged DataFrame
+        logging.info("Updating AnnData's .obs with merged DataFrame")
+        obs_merged.set_index(obs_index_name, inplace=True)
+        adata_metadata = adata[obs_merged.index]
+        adata_metadata.obs = obs_merged
+        logging.info(adata_metadata)
+
+    else:
+        logging.warning(
+            f"Sample ID '{args.sample_id}' not found in metadata. Skipping merging and using original obs DataFrame"
+        )
+        adata_metadata = adata
+        adata_metadata.obs["celltype"] = np.nan
 
     # Write AnnData object to .h5ad file
     logging.info("Writing AnnData object to .h5ad file")
