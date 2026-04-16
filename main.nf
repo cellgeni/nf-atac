@@ -16,7 +16,8 @@ def helpMessage() {
         --sample_table      Path to .csv file with sample names and paths to CellRanger-arc output directories
         --celltypes         Path to .csv file with celltype annotation
         --pseudobulk_peaks  Path to pseudobulk_peaks.csv (required when using --inferConsensus without --callPeaks)
-        --atac_adata        Path to atac_anndata.csv (required when using --attachGEX without --inferConsensus)
+        --consensus         Path to consensus_peaks.bed (required when using --countPeaks without --inferConsensus)
+        --atac_adata        Path to atac_anndata.csv (required when using --attachGEX without --countPeaks)
         
         :PIPELINE FILES:
         --chromsizes       Path to chromsizes file (default: reference/hg38.chrom.sizes)
@@ -25,8 +26,14 @@ def helpMessage() {
 
         :STEPS:
         --callPeaks         Run peak calling for provided celltypes (creates pseudobulks and calls peaks)
-        --inferConsensus    Run consensus peak calling and feature calculation (creates cisTopic objects)
+        --inferConsensus    Run consensus peak calling (creates consensus peaks)
+        --countPeaks        Run QC and feature/object generation from consensus peaks (creates cisTopic and AnnData objects)
         --attachGEX         Attach GEX data to ATAC data for multiome integration
+
+        :STEP RULES:
+        --inferConsensus auto-enables --countPeaks when --countPeaks is not provided
+        --countPeaks without --inferConsensus requires --consensus
+        --attachGEX without --countPeaks requires --atac_adata
     
     Optional arguments:
         --output_dir        Output directory (default: 'results')
@@ -37,16 +44,19 @@ def helpMessage() {
             nextflow run main.nf --callPeaks --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
         
         2. Infer consensus peaks and calculate features (requires updated sample table from step 1):
-            nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+            nextflow run main.nf --inferConsensus --countPeaks --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+
+        3. Run countPeaks from an existing consensus file:
+            nextflow run main.nf --countPeaks --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --consensus ./results/consensus_peaks.bed
         
-        3. Attach GEX data to existing ATAC data:
+        4. Attach GEX data to existing ATAC data:
             nextflow run main.nf --attachGEX --sample_table ./example/updated_sample_table.csv --celltypes ./example/celltypes.csv --atac_adata ./results/atac_anndata.csv
         
-        4. Infer consensus peaks and attach GEX in one go:
-            nextflow run main.nf --inferConsensus --attachGEX --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+        5. Infer consensus peaks, count peaks, and attach GEX in one go:
+            nextflow run main.nf --inferConsensus --countPeaks --attachGEX --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
 
-        5. Run complete pipeline (peak calling + consensus inference + GEX attachment):
-            nextflow run main.nf --callPeaks --inferConsensus --attachGEX --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
+        6. Run complete pipeline (peak calling + consensus inference + countPeaks + GEX attachment):
+            nextflow run main.nf --callPeaks --inferConsensus --countPeaks --attachGEX --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
     
     Input file formats:
         
@@ -85,35 +95,63 @@ workflow {
         System.exit(0)
     }
 
+    // Normalize step flags.
+    callPeaksFlag       = params.callPeaks
+    inferConsensusFlag  = params.inferConsensus
+    countPeaksFlag      = params.countPeaks
+    attachGEXFlag       = params.attachGEX
+
     // Check required arguments for peak calling
-    if ( params.callPeaks && (! params.sample_table || ! params.celltypes || ! params.chromsizes) ) {
+    if ( callPeaksFlag && (! params.sample_table || ! params.celltypes || ! params.chromsizes) ) {
         error("Please provide --sample_table, --celltypes and --chromsizes when using --callPeaks")
     }
 
     // Check required arguments for consensus peak inference
-    if ( params.inferConsensus && (! params.sample_table || ! params.celltypes || ! params.chromsizes || ! params.blacklist || ! params.tss_bed) ) {
-        error("Please provide --sample_table, --celltypes, --chromsizes, --blacklist and --tss_bed when using --inferConsensus")
+    if ( inferConsensusFlag && (! params.chromsizes || ! params.blacklist) ) {
+        error("Please provide --chromsizes and --blacklist when using --inferConsensus")
+    }
+
+    // Check required arguments for countPeaks
+    if ( countPeaksFlag && (! params.sample_table || ! params.celltypes || ! params.blacklist || ! params.tss_bed) ) {
+        error("Please provide --sample_table, --celltypes, --blacklist and --tss_bed when using --countPeaks")
+    }
+
+    // countPeaks requires consensus peaks from either inferConsensus step or external file
+    if ( countPeaksFlag && ! inferConsensusFlag && ! params.consensus ) {
+        error("Please provide --consensus when using --countPeaks without --inferConsensus")
     }
 
     // Check required arguments for attaching GEX data
-    if ( params.attachGEX && (! params.sample_table || ! params.celltypes) ) {
+    if ( attachGEXFlag && (! params.sample_table || ! params.celltypes) ) {
         error("Please provide --sample_table and --celltypes when using --attachGEX")
     }
 
     // Check required arguments for INFERPEAKS without CALLPEAKS
-    if ( params.inferConsensus && ! params.callPeaks && ! params.pseudobulk_peaks ) {
+    if ( inferConsensusFlag && ! callPeaksFlag && ! params.pseudobulk_peaks ) {
         error("Please provide --pseudobulk_peaks when using --inferConsensus without --callPeaks")
     }
 
-    // Check required arguments for ATTACHGEX without INFERPEAKS
-    if ( params.attachGEX && ! params.inferConsensus && ! params.atac_adata ) {
-        error("Please provide --atac_adata when using --attachGEX without --inferConsensus")
+    // Validate pseudobulk_peaks CSV has required columns: celltype, fragments, path
+    if ( inferConsensusFlag && ! callPeaksFlag && params.pseudobulk_peaks ) {
+        def pbp_file = file( params.pseudobulk_peaks )
+        def header = pbp_file.readLines().first().split(',').collect { col -> col.trim() }
+        def required_cols = ['celltype', 'path']
+        def missing_cols = required_cols.findAll { col -> ! header.contains(col) }
+        if ( missing_cols ) {
+            error("--pseudobulk_peaks CSV is missing required columns: ${missing_cols.join(', ')}. Expected columns: ${required_cols.join(', ')}")
+        }
     }
-    
+
+    // AttachGEX needs ATAC anndata from countPeaks output or external atac_adata file
+    if ( attachGEXFlag && ! countPeaksFlag && ! params.atac_adata ) {
+        error("Please provide --atac_adata when using --attachGEX without --countPeaks")
+    }
+
     // Load files
     sample_table     = params.sample_table ? channel.value( file( params.sample_table, checkIfExists: true ) ): channel.empty()
     celltypes        = params.celltypes ? channel.value( file( params.celltypes, checkIfExists: true ) ): channel.empty()
     pseudobulk_peaks = params.pseudobulk_peaks ? channel.value( file( params.pseudobulk_peaks, checkIfExists: true ) ): channel.empty()
+    consensus        = params.consensus ? channel.value( [ [id: "input_consensus"], file( params.consensus, checkIfExists: true ) ] ): channel.empty()
     atac_adata       = params.atac_adata ? channel.value( file( params.atac_adata, checkIfExists: true ) ): channel.empty()
 
     // Load other files required for cisTopic pipeline
@@ -126,13 +164,15 @@ workflow {
         sample_table,
         celltypes,
         pseudobulk_peaks,
+        consensus,
         atac_adata,
         chromsizes,
         blacklist,
         tss_bed,
-        params.callPeaks,
-        params.inferConsensus,
-        params.attachGEX,
+        callPeaksFlag,
+        inferConsensusFlag,
+        countPeaksFlag,
+        attachGEXFlag,
         params.cistopic.gex_filtered
     )
 

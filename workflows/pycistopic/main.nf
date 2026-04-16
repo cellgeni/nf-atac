@@ -1,19 +1,21 @@
 include { CISTOPIC_PEAKCALLING } from '../../subworkflows/local/cistopic_peakcalling'
-include { CISTOPIC_INFERPEAKS } from '../../subworkflows/local/cistopic_inferpeaks'
 include { CISTOPIC_ATTACHGEX } from '../../subworkflows/local/cistopic_attachgex'
-
+include { CISTOPIC_INFERCONSENSUS } from '../../modules/local/cistopic/inferconsensus'
+include { CISTOPIC_COUNTPEAKS } from '../../subworkflows/local/cistopic_countpeaks'
 
 workflow  PYCISTOPIC {
     take:
     sample_table
     celltypes
     pseudobulk_peaks
+    consensus
     atac_adata
     chromsizes
     blacklist
     tss_bed
     callPeaksFlag
     inferConsensusFlag
+    countPeaksFlag
     attachGEXFlag
     gex_filtered
     
@@ -43,16 +45,38 @@ workflow  PYCISTOPIC {
             peak_metadata = pseudobulk_peaks
         }
 
-        CISTOPIC_INFERPEAKS(
-            peak_metadata,
+        // Get peak paths from peaks channel
+        narrowPeaks = peak_metadata.toSortedList()
+            .map{ list -> 
+                def celltype_names = list.collect{ it -> it[0].id }
+                def narrowpeak_files = list.collect{ it -> it[1] }
+                return [ celltype_names, narrowpeak_files ]
+            }
+
+        CISTOPIC_INFERCONSENSUS(
+            narrowPeaks,
+            chromsizes,
+            blacklist
+        )
+
+        consensus = CISTOPIC_INFERCONSENSUS.out.bed
+        versions = versions.mix(CISTOPIC_INFERCONSENSUS.out.versions)
+    }
+
+    if ( countPeaksFlag ) {
+        if ( ! callPeaksFlag ) {
+            updated_samples = sample_table
+        }
+
+        CISTOPIC_COUNTPEAKS(
+            consensus,
             updated_samples,
             celltypes,
-            chromsizes,
             blacklist,
             tss_bed
         )
-        versions = versions.mix(CISTOPIC_INFERPEAKS.out.versions)
-        atac = CISTOPIC_INFERPEAKS.out.anndata
+
+        versions = versions.mix(CISTOPIC_COUNTPEAKS.out.versions)
     }
 
     if ( attachGEXFlag ) {
@@ -60,9 +84,7 @@ workflow  PYCISTOPIC {
             updated_samples = sample_table
         }
 
-        if ( ! inferConsensusFlag ) {
-            atac = atac_adata
-        }
+        atac = countPeaksFlag ? CISTOPIC_COUNTPEAKS.out.anndata : atac_adata
 
         CISTOPIC_ATTACHGEX(
             updated_samples,
@@ -77,9 +99,9 @@ workflow  PYCISTOPIC {
     emit:
     pseudobulk   = callPeaksFlag ? CISTOPIC_PEAKCALLING.out.pseudobulk : Channel.empty()
     peaks        = callPeaksFlag ? CISTOPIC_PEAKCALLING.out.peaks : Channel.empty()
-    consensus    = inferConsensusFlag ? CISTOPIC_INFERPEAKS.out.consensus : Channel.empty()
-    cistopic     = inferConsensusFlag ? CISTOPIC_INFERPEAKS.out.cistopic : Channel.empty()
-    atac_anndata = inferConsensusFlag ? CISTOPIC_INFERPEAKS.out.anndata : Channel.empty()
+    consensus    = inferConsensusFlag ? CISTOPIC_INFERCONSENSUS.out.bed : Channel.empty()
+    cistopic     = countPeaksFlag ? CISTOPIC_COUNTPEAKS.out.cistopic : Channel.empty()
+    atac_anndata = countPeaksFlag ? CISTOPIC_COUNTPEAKS.out.anndata : Channel.empty()
     coupled_h5mu = attachGEXFlag ? CISTOPIC_ATTACHGEX.out.h5mu : Channel.empty()
     coupled_h5ad = attachGEXFlag ? CISTOPIC_ATTACHGEX.out.h5ad : Channel.empty()
     versions     = versions
