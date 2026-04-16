@@ -24,7 +24,8 @@ This pipeline performs peak calling for ATAC-seq data using pyCisTopic. It suppo
 * `--sample_table`: Path to .csv file with sample names and paths to the CellRanger-arc output directories
 * `--celltypes`: Path to .csv file with celltype annotation
 * `--pseudobulk_peaks`: Path to pseudobulk_peaks.csv (required when using --inferConsensus without --callPeaks)
-* `--atac_adata`: Path to atac_anndata.csv (required when using --attachGEX without --inferConsensus)
+* `--consensus`: Path to consensus_peaks.bed (required when using --countPeaks without --inferConsensus)
+* `--atac_adata`: Path to atac_anndata.csv (required when using --attachGEX without --countPeaks)
 
 #### Pipeline Files
 * `--chromsizes`: Path to chromsizes file (default: reference/hg38.chrom.sizes)
@@ -33,8 +34,14 @@ This pipeline performs peak calling for ATAC-seq data using pyCisTopic. It suppo
 
 #### Steps
 * `--callPeaks`: Run peak calling for provided celltypes (creates pseudobulks and calls peaks)
-* `--inferConsensus`: Run consensus peak calling and feature calculation (creates cisTopic objects)
+* `--inferConsensus`: Run consensus peak calling (creates consensus peaks)
+* `--countPeaks`: Run QC and feature/object generation from consensus peaks (creates cisTopic and AnnData objects)
 * `--attachGEX`: Attach GEX data to ATAC data for multiome integration
+
+Step dependency notes:
+* If `--inferConsensus` is set and `--countPeaks` is omitted, `countPeaks` is enabled automatically for backward compatibility.
+* If `--countPeaks` is set without `--inferConsensus`, provide `--consensus`.
+* If `--attachGEX` is set without `--countPeaks`, provide `--atac_adata`.
 
 ### Optional Arguments
 * `--output_dir`: Output directory (default: 'results')
@@ -46,7 +53,7 @@ This pipeline performs peak calling for ATAC-seq data using pyCisTopic. It suppo
 | Parameter        | Default     | Description                                             |
 | ---------------- | ----------- | ------------------------------------------------------- |
 | `--output_dir`   | `'results'` | Output directory for all pipeline results               |
-| `--publish_mode` | `'link'`    | How to publish output files ('link', 'copy', 'symlink') |
+| `--publish_mode` | `'copy'`    | How to publish output files ('link', 'copy', 'symlink') |
 
 ### Reference Files
 | Parameter      | Default                             | Description                                           |
@@ -92,8 +99,8 @@ This pipeline performs peak calling for ATAC-seq data using pyCisTopic. It suppo
 | Parameter                             | Default | Description                                            |
 | ------------------------------------- | ------- | ------------------------------------------------------ |
 | `--cistopic.min_frag`                 | `0`     | Minimum fragments per peak for inclusion               |
-| `--cistopic.min_cell`                 | `0`     | Minimum cells per peak for inclusion                   |
-| `--cistopic.is_acc`                   | `0`     | Whether data is accessibility data (1=yes, 0=no)       |
+| `--cistopic.min_cell`                 | `1`     | Minimum cells per peak for inclusion                   |
+| `--cistopic.is_acc`                   | `1`     | Whether data is accessibility data (1=yes, 0=no)       |
 | `--cistopic.split_pattern`            | `'___'` | Pattern for splitting cell identifiers                 |
 | `--cistopic.check_for_duplicates`     | `true`  | Check for duplicate peaks in consensus                 |
 | `--cistopic.use_automatic_thresholds` | `true`  | Use automatic QC thresholds based on data distribution |
@@ -124,7 +131,11 @@ nextflow run main.nf --callPeaks --sample_table sample.csv --celltypes celltypes
   --cistopic.normalize_bigwig false
 
 # Run multiome pipeline with GEX attachment
-nextflow run main.nf --callPeaks --inferConsensus --attachGEX --sample_table sample.csv --celltypes celltypes.csv
+nextflow run main.nf --callPeaks --inferConsensus --countPeaks --attachGEX --sample_table sample.csv --celltypes celltypes.csv
+
+# Run countPeaks from an existing consensus file
+nextflow run main.nf --countPeaks --sample_table updated_sample.csv --celltypes celltypes.csv \
+  --consensus consensus_peaks.bed
 
 # Attach GEX data to existing ATAC data
 nextflow run main.nf --attachGEX --sample_table updated_sample.csv --celltypes celltypes.csv \
@@ -224,9 +235,14 @@ results/
 ```
 
 ### 2. Infer consensus peaks and calculate features
-To run consensus peak calling and feature calculation you need to specify an **updated sample table** generated on previous step (it is essential to use updated table with fragment counts to set appropriate memory limits for jobs) and **pseudobulk peaks table** generated on previous step with selected celltypes:
+By default, `--inferConsensus` also enables `--countPeaks` when `--countPeaks` is not explicitly provided. To run consensus peak calling and feature calculation you need to specify an **updated sample table** generated on previous step (it is essential to use updated table with fragment counts to set appropriate memory limits for jobs) and **pseudobulk peaks table** generated on previous step with selected celltypes:
 ```shell
-nextflow run main.nf --inferConsensus --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+nextflow run main.nf --inferConsensus --countPeaks --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+```
+
+To run consensus peak calling only (without feature/object generation), disable countPeaks explicitly:
+```shell
+nextflow run main.nf --inferConsensus --countPeaks false --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
 ```
 
 This will create a `consensus_peaks.bed` file, `cisTopic` and `.h5ad` objects for each sample and combined `cisTopic` and `.h5ad` objects for whole dataset:
@@ -261,7 +277,7 @@ nextflow run main.nf --attachGEX --sample_table ./example/updated_sample_table.c
 
 Option B - Generate ATAC anndata first, then attach GEX:
 ```shell
-nextflow run main.nf --inferConsensus --attachGEX --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+nextflow run main.nf --inferConsensus --countPeaks --attachGEX --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
 ```
 
 This will create multiome objects (.h5mu) and combined AnnData objects (.h5ad) with both ATAC and GEX data:
@@ -286,17 +302,17 @@ Set `--cistopic.gex_filtered false` to use `raw_feature_bc_matrix` instead.
 ### 4. Infer consensus peaks and attach GEX in one go
 To run consensus peak inference and GEX attachment together:
 ```shell
-nextflow run main.nf --inferConsensus --attachGEX --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
+nextflow run main.nf --inferConsensus --countPeaks --attachGEX --sample_table ./results/updated_sample_table.csv --celltypes ./example/celltypes.csv --pseudobulk_peaks ./results/pseudobulk_peaks.csv
 ```
 
 ### 5. Perform peak calling, infer consensus peaks and calculate features
 To run all steps together you can use the following command:
 ```shell
-nextflow run main.nf --callPeaks --inferConsensus --sample_table ./example/sample_table.csv --celltypes example/celltypes.csv
+nextflow run main.nf --callPeaks --inferConsensus --countPeaks --sample_table ./example/sample_table.csv --celltypes example/celltypes.csv
 ```
 
 ### 6. Complete multiome pipeline (all steps including GEX attachment)
 To run the complete pipeline including multiome integration:
 ```shell
-nextflow run main.nf --callPeaks --inferConsensus --attachGEX --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
+nextflow run main.nf --callPeaks --inferConsensus --countPeaks --attachGEX --sample_table ./example/sample_table.csv --celltypes ./example/celltypes.csv
 ```
