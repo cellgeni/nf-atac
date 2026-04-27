@@ -148,16 +148,26 @@ workflow {
     }
 
     // Load files
-    sample_table     = params.sample_table ? channel.value( file( params.sample_table, checkIfExists: true ) ): channel.empty()
-    celltypes        = params.celltypes ? channel.value( file( params.celltypes, checkIfExists: true ) ): channel.empty()
-    pseudobulk_peaks = params.pseudobulk_peaks ? channel.value( file( params.pseudobulk_peaks, checkIfExists: true ) ): channel.empty()
-    consensus        = params.consensus ? channel.value( [ [id: "input_consensus"], file( params.consensus, checkIfExists: true ) ] ): channel.empty()
-    atac_adata       = params.atac_adata ? channel.value( file( params.atac_adata, checkIfExists: true ) ): channel.empty()
+    def _sample_table     = params.sample_table     ? file( params.sample_table,     checkIfExists: true ) : null
+    def _celltypes        = params.celltypes        ? file( params.celltypes,        checkIfExists: true ) : null
+    def _pseudobulk_peaks = params.pseudobulk_peaks ? file( params.pseudobulk_peaks, checkIfExists: true ) : null
+    def _consensus        = params.consensus        ? file( params.consensus,        checkIfExists: true ) : null
+    def _atac_adata       = params.atac_adata       ? file( params.atac_adata,       checkIfExists: true ) : null
+
+    sample_table     = _sample_table     ? channel.value( _sample_table )                              : channel.empty()
+    celltypes        = _celltypes        ? channel.value( _celltypes )                                 : channel.empty()
+    pseudobulk_peaks = _pseudobulk_peaks ? channel.value( _pseudobulk_peaks )                          : channel.empty()
+    consensus        = _consensus        ? channel.value( [ [id: "input_consensus"], _consensus ] )    : channel.empty()
+    atac_adata       = _atac_adata       ? channel.value( _atac_adata )                                : channel.empty()
 
     // Load other files required for cisTopic pipeline
-    chromsizes = channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], file( params.chromsizes ) ) )
-    blacklist  = channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], file( params.blacklist ) ) )
-    tss_bed    = channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], file( params.tss_bed ) ) )
+    def _chromsizes = file( params.chromsizes )
+    def _blacklist  = file( params.blacklist )
+    def _tss_bed    = file( params.tss_bed )
+
+    chromsizes = channel.value( tuple( [id: "http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.chrom.sizes"], _chromsizes ) )
+    blacklist  = channel.value( tuple( [id: 'https://www.nature.com/articles/s41598-019-45839-z'], _blacklist ) )
+    tss_bed    = channel.value( tuple( [id: 'https://github.com/cellgeni/nf-atac/blob/main/reference/hg38_pycistopic_tss.bed'], _tss_bed ) )
 
     // Run PyCistopic pipeline
     PYCISTOPIC(
