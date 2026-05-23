@@ -269,7 +269,7 @@ def main():
     if (metadata[sample_id_column] == args.sample_id).any():
         obs_merged = merge_metadata(
             obs, metadata, barcode_column, sample_id_column, args.sample_id, args.how
-        )
+        ).fillna(np.nan)
 
         # Update AnnData's .obs with merged DataFrame
         logging.info("Updating AnnData's .obs with merged DataFrame")
